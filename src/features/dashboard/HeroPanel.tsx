@@ -3,6 +3,7 @@ import { money } from '../../game/core/format'
 import { getWeeklyRunway } from '../../game/core/selectors'
 import type { GameAction, GameState, Job } from '../../game/core/types'
 import { SIDE_JOB_MAP } from '../career/data'
+import { HOUSING_OPTION_MAP } from '../lifestyle/data'
 
 type Props = {
   state: GameState
@@ -19,15 +20,24 @@ function formatAge(ageMonths: number) {
 export function HeroPanel({ state, currentJob, dispatch }: Props) {
   const weeklyRunway = getWeeklyRunway(state)
   const currentSideJobs = state.sideJobIds.map((id) => SIDE_JOB_MAP[id]).filter(Boolean)
+  const housingLabel = HOUSING_OPTION_MAP[state.housingTier].title
+  const bankingLabel = state.bankAccount ? 'Banked' : 'Unbanked'
+  const sideWorkLabel = currentSideJobs.length > 0 ? currentSideJobs.map((job) => job.title).join(', ') : 'No side work'
 
   return (
     <header className="hero-panel">
       <div className="hero-copy">
         <span className="eyebrow">Street To Skyline</span>
-        <h1>Start with nothing and force your own way into wealth.</h1>
+        <h1>Start from zero. Build leverage.</h1>
         <p className="hero-text">
-          You begin at 18, fresh out of high school, with zero cash, unstable housing, and no financial cushion. The game now moves week to week, so short-term choices around side work, recovery, studying, and investing matter before the bigger month-end settlement hits.
+          You are 18, broke, and unstable. Each week is about staying alive, building a buffer, and choosing which lane to push next.
         </p>
+        <div className="hero-meta">
+          <span className="meta-pill">{formatAge(state.ageMonths)}</span>
+          <span className={`meta-pill ${state.bankAccount ? '' : 'warning'}`}>{bankingLabel}</span>
+          <span className={`meta-pill ${state.housingTier === 'shelter' ? 'warning' : ''}`}>{housingLabel}</span>
+          <span className="meta-pill wide">{sideWorkLabel}</span>
+        </div>
         <div className="hero-actions">
           <button className="primary-button" onClick={() => startTransition(() => dispatch({ type: 'END_WEEK' }))}>
             Advance Week
@@ -40,25 +50,19 @@ export function HeroPanel({ state, currentJob, dispatch }: Props) {
 
       <div className="hero-side">
         <div className="month-badge">Week {state.week} | Month {state.month} | W{state.weekOfMonth}</div>
-        <div className="hero-stat">
-          <span>Age</span>
-          <strong>{formatAge(state.ageMonths)}</strong>
-        </div>
-        <div className="hero-stat">
-          <span>Current job</span>
-          <strong>{currentJob.title}</strong>
-        </div>
-        <div className="hero-stat">
-          <span>Side work</span>
-          <strong>{currentSideJobs.length > 0 ? currentSideJobs.map((job) => job.title).join(', ') : 'None'}</strong>
-        </div>
-        <div className="hero-stat">
-          <span>Actions left</span>
-          <strong>{state.actionPoints}</strong>
-        </div>
-        <div className="hero-stat">
-          <span>Weekly runway</span>
-          <strong className={weeklyRunway >= 0 ? 'positive' : 'negative'}>{money(weeklyRunway)}</strong>
+        <div className="hero-side-grid">
+          <div className="hero-stat wide">
+            <span>Current job</span>
+            <strong>{currentJob.title}</strong>
+          </div>
+          <div className="hero-stat">
+            <span>Actions left</span>
+            <strong>{state.actionPoints}</strong>
+          </div>
+          <div className="hero-stat">
+            <span>Weekly runway</span>
+            <strong className={weeklyRunway >= 0 ? 'positive' : 'negative'}>{money(weeklyRunway)}</strong>
+          </div>
         </div>
       </div>
     </header>

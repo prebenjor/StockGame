@@ -8,6 +8,16 @@ type Props = {
   dispatch: React.Dispatch<GameAction>
 }
 
+function CardMedia({ imageUrl, imageAlt }: { imageUrl?: string; imageAlt?: string }) {
+  if (!imageUrl) return null
+
+  return (
+    <div className="card-media">
+      <img src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
+    </div>
+  )
+}
+
 export function NetworkPanel({ state, dispatch }: Props) {
   const contacts = getContactSummaries(state)
   const rivals = getRivalSummaries(state)
@@ -25,6 +35,7 @@ export function NetworkPanel({ state, dispatch }: Props) {
       <div className="card-grid">
         {contacts.map((contact) => (
           <article className="card" key={contact.contactId}>
+            <CardMedia imageUrl={contact.imageUrl} imageAlt={contact.imageAlt} />
             <div className="card-topline">
               <h3>{contact.name}</h3>
               <span>{contact.relationship}</span>
@@ -49,6 +60,7 @@ export function NetworkPanel({ state, dispatch }: Props) {
       <div className="card-grid">
         {rivals.map((rival) => (
           <article className="card" key={rival.id}>
+            <CardMedia imageUrl={rival.imageUrl} imageAlt={rival.imageAlt} />
             <div className="card-topline">
               <h3>{rival.name}</h3>
               <span>{rival.rivalry}</span>
@@ -81,6 +93,7 @@ export function NetworkPanel({ state, dispatch }: Props) {
         ) : (
           state.opportunities.map((opportunity) => (
             <article className="card" key={opportunity.id}>
+              <CardMedia imageUrl={CONTACT_MAP[opportunity.contactId].imageUrl} imageAlt={CONTACT_MAP[opportunity.contactId].imageAlt} />
               <div className="card-topline">
                 <h3>{opportunity.title}</h3>
                 <span>{CONTACT_MAP[opportunity.contactId].role}</span>

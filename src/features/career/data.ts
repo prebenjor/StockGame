@@ -1,14 +1,37 @@
 import type { Course, Gig, Job, SideJob, Upgrade } from '../../game/core/types'
 
+const image = (imageUrl: string, imageAlt: string) => ({ imageUrl, imageAlt })
+
+const JOB_IMAGES = {
+  cleaning: image('https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=80', 'Custodian cleaning a modern hallway'),
+  labor: image('https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80', 'Worker carrying boxes in a warehouse'),
+  cafe: image('https://images.unsplash.com/photo-1445116572660-236099ec97a0?auto=format&fit=crop&w=1200&q=80', 'Barista working behind a cafe counter'),
+  sales: image('https://images.unsplash.com/photo-1556740749-887f6717d7e4?auto=format&fit=crop&w=1200&q=80', 'Retail worker helping a customer in a store'),
+  analyst: image('https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=1200&q=80', 'Financial analyst reviewing charts on a desk'),
+  property: image('https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1200&q=80', 'Property manager standing outside an apartment building'),
+  startup: image('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80', 'Startup team collaborating around a table'),
+} as const
+
+const SKILL_IMAGES = {
+  sales: image('https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80', 'Instructor coaching a student in a sales workshop'),
+  finance: image('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80', 'Laptop showing financial charts and spreadsheets'),
+  property: image('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80', 'Modern apartment building exterior'),
+  coding: image('https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=80', 'Developer coding at a workstation'),
+  mobility: image('https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1200&q=80', 'Scooter parked on an urban street'),
+  tools: image('https://images.unsplash.com/photo-1504148455328-c376907d081c?auto=format&fit=crop&w=1200&q=80', 'Hand tools laid out on a workbench'),
+  crm: image('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80', 'Property management dashboard on a laptop'),
+  emergency: image('https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=1200&q=80', 'Budget notebook with cash and calculator'),
+} as const
+
 export const JOBS: Job[] = [
-  { id: 'night-cleaning', title: 'Night Cleaning Shift', salary: 240, reputationRequired: 0, certifications: [], description: 'Low pay, rough hours, and just enough money to stay in motion.' },
-  { id: 'odd-jobs', title: 'Odd Jobs Circuit', salary: 420, reputationRequired: 0, certifications: [], description: 'Temp shifts, cleaning gigs, and moving boxes just to stay afloat.' },
-  { id: 'cafe', title: 'Cafe Shift Lead', salary: 700, reputationRequired: 2, certifications: [], description: 'Early mornings, steady tips, and a little more structure.' },
-  { id: 'warehouse', title: 'Warehouse Picker', salary: 920, reputationRequired: 3, certifications: [], description: 'Long hours and sore knees, but reliable weekly flow once you lock it in.' },
-  { id: 'sales', title: 'Sales Assistant', salary: 1400, reputationRequired: 5, certifications: ['sales-course'], description: 'Commission upside if you can keep a smile on hard days.' },
-  { id: 'analyst', title: 'Junior Market Analyst', salary: 1900, reputationRequired: 7, certifications: ['finance-cert'], description: 'You finally get paid to read charts instead of just staring at them.' },
-  { id: 'manager', title: 'Property Manager', salary: 2700, reputationRequired: 10, certifications: ['landlord-license'], description: 'Leasing, maintenance calls, and useful landlord contacts.' },
-  { id: 'operator', title: 'Startup Operations Lead', salary: 3500, reputationRequired: 14, certifications: ['coding-bootcamp'], description: 'Fast money, fast chaos, and enough cash to scale your empire.' },
+  { id: 'night-cleaning', title: 'Night Cleaning Shift', salary: 240, reputationRequired: 0, certifications: [], description: 'Low pay, rough hours, and just enough money to stay in motion.', ...JOB_IMAGES.cleaning },
+  { id: 'odd-jobs', title: 'Odd Jobs Circuit', salary: 420, reputationRequired: 0, certifications: [], description: 'Temp shifts, cleaning gigs, and moving boxes just to stay afloat.', ...JOB_IMAGES.labor },
+  { id: 'cafe', title: 'Cafe Shift Lead', salary: 700, reputationRequired: 2, certifications: [], description: 'Early mornings, steady tips, and a little more structure.', ...JOB_IMAGES.cafe },
+  { id: 'warehouse', title: 'Warehouse Picker', salary: 920, reputationRequired: 3, certifications: [], description: 'Long hours and sore knees, but reliable weekly flow once you lock it in.', ...JOB_IMAGES.labor },
+  { id: 'sales', title: 'Sales Assistant', salary: 1400, reputationRequired: 5, certifications: ['sales-course'], description: 'Commission upside if you can keep a smile on hard days.', ...JOB_IMAGES.sales },
+  { id: 'analyst', title: 'Junior Market Analyst', salary: 1900, reputationRequired: 7, certifications: ['finance-cert'], description: 'You finally get paid to read charts instead of just staring at them.', ...JOB_IMAGES.analyst },
+  { id: 'manager', title: 'Property Manager', salary: 2700, reputationRequired: 10, certifications: ['landlord-license'], description: 'Leasing, maintenance calls, and useful landlord contacts.', ...JOB_IMAGES.property },
+  { id: 'operator', title: 'Startup Operations Lead', salary: 3500, reputationRequired: 14, certifications: ['coding-bootcamp'], description: 'Fast money, fast chaos, and enough cash to scale your empire.', ...JOB_IMAGES.startup },
 ]
 
 export const SIDE_JOBS: SideJob[] = [
@@ -26,6 +49,7 @@ export const SIDE_JOBS: SideJob[] = [
     weeklyEnergy: 9,
     reputationGain: 1,
     contactId: 'contractor',
+    ...SKILL_IMAGES.mobility,
   },
   {
     id: 'campus-desk',
@@ -42,6 +66,7 @@ export const SIDE_JOBS: SideJob[] = [
     reputationGain: 1,
     knowledgeGain: 1,
     contactId: 'recruiter',
+    ...SKILL_IMAGES.sales,
   },
   {
     id: 'commission-nights',
@@ -57,6 +82,7 @@ export const SIDE_JOBS: SideJob[] = [
     weeklyEnergy: 7,
     reputationGain: 2,
     contactId: 'recruiter',
+    ...JOB_IMAGES.sales,
   },
   {
     id: 'handyman-helper',
@@ -72,6 +98,7 @@ export const SIDE_JOBS: SideJob[] = [
     weeklyEnergy: 6,
     reputationGain: 1,
     contactId: 'contractor',
+    ...SKILL_IMAGES.tools,
   },
   {
     id: 'market-intern',
@@ -89,6 +116,7 @@ export const SIDE_JOBS: SideJob[] = [
     knowledgeGain: 1,
     contactId: 'banker',
     bankAccountRequired: true,
+    ...JOB_IMAGES.analyst,
   },
   {
     id: 'freelance-retainer',
@@ -104,6 +132,7 @@ export const SIDE_JOBS: SideJob[] = [
     weeklyEnergy: 6,
     reputationGain: 1,
     contactId: 'recruiter',
+    ...SKILL_IMAGES.coding,
   },
   {
     id: 'festival-crew',
@@ -120,6 +149,7 @@ export const SIDE_JOBS: SideJob[] = [
     reputationGain: 1,
     contactId: 'broker',
     seasonMonths: [6, 7, 8],
+    ...image('https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80', 'Festival crew working under event lights'),
   },
   {
     id: 'holiday-retail',
@@ -136,6 +166,7 @@ export const SIDE_JOBS: SideJob[] = [
     reputationGain: 2,
     contactId: 'recruiter',
     seasonMonths: [11, 12],
+    ...image('https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1200&q=80', 'Retail worker organizing holiday clothing displays'),
   },
   {
     id: 'startup-intern',
@@ -153,31 +184,32 @@ export const SIDE_JOBS: SideJob[] = [
     knowledgeGain: 1,
     contactId: 'recruiter',
     bankAccountRequired: true,
+    ...JOB_IMAGES.startup,
   },
 ]
 
 export const GIGS: Gig[] = [
-  { id: 'flyers', title: 'Street Flyer Handout', payout: 45, reputationRequired: 0, certifications: [], description: 'Hours on your feet pushing leaflets for barely enough cash to matter.' },
-  { id: 'delivery', title: 'Food Delivery Rush', payout: 95, reputationRequired: 0, certifications: [], description: 'A brutal extra push for quick weekly cash.' },
-  { id: 'market-stall', title: 'Weekend Market Stall', payout: 165, reputationRequired: 3, certifications: ['sales-course'], description: 'Move product, haggle hard, and make a decent one-off side margin.' },
-  { id: 'tutoring', title: 'Exam Prep Tutoring', payout: 185, reputationRequired: 5, certifications: ['finance-cert'], description: 'Solid pay for sharp prep sessions and patient explanations.' },
-  { id: 'freelance', title: 'Freelance Web Fix', payout: 235, reputationRequired: 7, certifications: ['coding-bootcamp'], description: 'Patch a landing page, send an invoice, repeat when needed.' },
-  { id: 'repair-callout', title: 'Property Repair Callout', payout: 145, reputationRequired: 4, certifications: ['landlord-license'], description: 'Handle snag lists and keep units market-ready.', needsProperty: true },
+  { id: 'flyers', title: 'Street Flyer Handout', payout: 45, reputationRequired: 0, certifications: [], description: 'Hours on your feet pushing leaflets for barely enough cash to matter.', ...image('https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1200&q=80', 'Promotional worker handing out flyers on a city street') },
+  { id: 'delivery', title: 'Food Delivery Rush', payout: 95, reputationRequired: 0, certifications: [], description: 'A brutal extra push for quick weekly cash.', ...SKILL_IMAGES.mobility },
+  { id: 'market-stall', title: 'Weekend Market Stall', payout: 165, reputationRequired: 3, certifications: ['sales-course'], description: 'Move product, haggle hard, and make a decent one-off side margin.', ...image('https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1200&q=80', 'Seller working at an outdoor market stall') },
+  { id: 'tutoring', title: 'Exam Prep Tutoring', payout: 185, reputationRequired: 5, certifications: ['finance-cert'], description: 'Solid pay for sharp prep sessions and patient explanations.', ...image('https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=1200&q=80', 'Tutor helping a student with notes and a laptop') },
+  { id: 'freelance', title: 'Freelance Web Fix', payout: 235, reputationRequired: 7, certifications: ['coding-bootcamp'], description: 'Patch a landing page, send an invoice, repeat when needed.', ...SKILL_IMAGES.coding },
+  { id: 'repair-callout', title: 'Property Repair Callout', payout: 145, reputationRequired: 4, certifications: ['landlord-license'], description: 'Handle snag lists and keep units market-ready.', needsProperty: true, ...SKILL_IMAGES.tools },
 ]
 
 export const COURSES: Course[] = [
-  { id: 'sales-course', title: 'Sales Course', cost: 450, reputationRequired: 2, description: 'Unlock better customer-facing jobs and stronger sales side work.' },
-  { id: 'finance-cert', title: 'Finance Certificate', cost: 950, reputationRequired: 4, description: 'Opens analyst work, internship paths, and stronger investing-related gigs.' },
-  { id: 'landlord-license', title: 'Landlord License', cost: 700, reputationRequired: 4, description: 'Lets you operate property gigs and higher-tier real-estate roles.' },
-  { id: 'coding-bootcamp', title: 'Coding Bootcamp', cost: 1400, reputationRequired: 6, description: 'Unlocks startup work, retainers, and freelance jobs with higher payout.' },
+  { id: 'sales-course', title: 'Sales Course', cost: 450, reputationRequired: 2, description: 'Unlock better customer-facing jobs and stronger sales side work.', ...SKILL_IMAGES.sales },
+  { id: 'finance-cert', title: 'Finance Certificate', cost: 950, reputationRequired: 4, description: 'Opens analyst work, internship paths, and stronger investing-related gigs.', ...SKILL_IMAGES.finance },
+  { id: 'landlord-license', title: 'Landlord License', cost: 700, reputationRequired: 4, description: 'Lets you operate property gigs and higher-tier real-estate roles.', ...SKILL_IMAGES.property },
+  { id: 'coding-bootcamp', title: 'Coding Bootcamp', cost: 1400, reputationRequired: 6, description: 'Unlocks startup work, retainers, and freelance jobs with higher payout.', ...SKILL_IMAGES.coding },
 ]
 
 export const UPGRADES: Upgrade[] = [
-  { id: 'scooter', title: 'Secondhand Scooter', cost: 650, description: 'Delivery work pays more because you can take more orders.' },
-  { id: 'toolkit', title: 'Tool Kit', cost: 480, description: 'Renovations cost less and repair gigs pay a little extra.' },
-  { id: 'tenant-crm', title: 'Tenant CRM', cost: 900, description: 'Boost rent collection and lower vacancy risk.' },
-  { id: 'broker-terminal', title: 'Broker Terminal', cost: 1200, description: 'Cuts trading fees and improves dividend income.' },
-  { id: 'emergency-fund', title: 'Emergency Reserve System', cost: 850, description: 'Tighter budgeting trims your monthly living costs.' },
+  { id: 'scooter', title: 'Secondhand Scooter', cost: 650, description: 'Delivery work pays more because you can take more orders.', ...SKILL_IMAGES.mobility },
+  { id: 'toolkit', title: 'Tool Kit', cost: 480, description: 'Renovations cost less and repair gigs pay a little extra.', ...SKILL_IMAGES.tools },
+  { id: 'tenant-crm', title: 'Tenant CRM', cost: 900, description: 'Boost rent collection and lower vacancy risk.', ...SKILL_IMAGES.crm },
+  { id: 'broker-terminal', title: 'Broker Terminal', cost: 1200, description: 'Cuts trading fees and improves dividend income.', ...SKILL_IMAGES.finance },
+  { id: 'emergency-fund', title: 'Emergency Reserve System', cost: 850, description: 'Tighter budgeting trims your monthly living costs.', ...SKILL_IMAGES.emergency },
 ]
 
 export const JOB_MAP = Object.fromEntries(JOBS.map((item) => [item.id, item])) as Record<string, Job>

@@ -1,6 +1,13 @@
 export type Tone = 'good' | 'bad' | 'neutral'
 
-export type Job = {
+export type MediaAsset = {
+  imageUrl?: string
+  imageAlt?: string
+  imageCreditLabel?: string
+  imageCreditUrl?: string
+}
+
+export type Job = MediaAsset & {
   id: string
   title: string
   salary: number
@@ -9,7 +16,7 @@ export type Job = {
   description: string
 }
 
-export type Gig = {
+export type Gig = MediaAsset & {
   id: string
   title: string
   payout: number
@@ -19,7 +26,7 @@ export type Gig = {
   needsProperty?: boolean
 }
 
-export type SideJob = {
+export type SideJob = MediaAsset & {
   id: string
   title: string
   category: 'shift' | 'internship' | 'seasonal' | 'freelance'
@@ -38,7 +45,7 @@ export type SideJob = {
   bankAccountRequired?: boolean
 }
 
-export type Course = {
+export type Course = MediaAsset & {
   id: string
   title: string
   cost: number
@@ -46,7 +53,7 @@ export type Course = {
   description: string
 }
 
-export type Upgrade = {
+export type Upgrade = MediaAsset & {
   id: string
   title: string
   cost: number
@@ -65,7 +72,7 @@ export type LifestyleCategory = 'housing' | 'transport' | 'food' | 'wellness'
 
 export type DebtKind = 'survival' | 'microloan' | 'mortgage' | 'tax' | 'overdraft' | 'student' | 'credit-card' | 'business-loan'
 
-export type PropertyTemplate = {
+export type PropertyTemplate = MediaAsset & {
   id: string
   title: string
   cost: number
@@ -73,10 +80,6 @@ export type PropertyTemplate = {
   upkeep: number
   reputationRequired: number
   description: string
-  imageUrl?: string
-  imageAlt?: string
-  imageCreditLabel?: string
-  imageCreditUrl?: string
 }
 
 export type TenantProfile = {
@@ -129,7 +132,7 @@ export type PropertyListing = {
   askingPrice: number
 }
 
-export type BusinessTemplate = {
+export type BusinessTemplate = MediaAsset & {
   id: string
   title: string
   cost: number
@@ -138,10 +141,6 @@ export type BusinessTemplate = {
   reputationRequired: number
   description: string
   preferredDistricts?: string[]
-  imageUrl?: string
-  imageAlt?: string
-  imageCreditLabel?: string
-  imageCreditUrl?: string
 }
 
 export type OwnedBusiness = {
@@ -209,7 +208,7 @@ export type DebtAccount = {
   securedPropertyUid?: string | null
 }
 
-export type EducationProgram = {
+export type EducationProgram = MediaAsset & {
   id: string
   title: string
   description: string
@@ -298,7 +297,7 @@ export type LifeEvent = {
   tone: Tone
 }
 
-export type Contact = {
+export type Contact = MediaAsset & {
   id: string
   name: string
   role: string
@@ -311,7 +310,7 @@ export type ContactState = {
   relationship: number
 }
 
-export type Rival = {
+export type Rival = MediaAsset & {
   id: string
   name: string
   archetype: string

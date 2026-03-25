@@ -1,5 +1,7 @@
 import type { EducationProgram } from '../../game/core/types'
 
+const image = (imageUrl: string, imageAlt: string) => ({ imageUrl, imageAlt })
+
 export const EDUCATION_PROGRAMS: EducationProgram[] = [
   {
     id: 'community-college-basics',
@@ -12,6 +14,7 @@ export const EDUCATION_PROGRAMS: EducationProgram[] = [
     monthlyEnergy: 4,
     knowledgeReward: 2,
     reputationReward: 1,
+    ...image('https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80', 'Students studying together on a college campus'),
   },
   {
     id: 'sales-diploma',
@@ -25,6 +28,7 @@ export const EDUCATION_PROGRAMS: EducationProgram[] = [
     knowledgeReward: 3,
     reputationReward: 1,
     certificationReward: 'sales-course',
+    ...image('https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80', 'Small group training session in a bright office'),
   },
   {
     id: 'finance-night-school',
@@ -38,6 +42,7 @@ export const EDUCATION_PROGRAMS: EducationProgram[] = [
     knowledgeReward: 5,
     reputationReward: 2,
     certificationReward: 'finance-cert',
+    ...image('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80', 'Finance coursework with charts and a calculator'),
   },
   {
     id: 'property-operations',
@@ -51,6 +56,7 @@ export const EDUCATION_PROGRAMS: EducationProgram[] = [
     knowledgeReward: 4,
     reputationReward: 2,
     certificationReward: 'landlord-license',
+    ...image('https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80', 'Apartment building and maintenance clipboard'),
   },
   {
     id: 'software-apprenticeship',
@@ -64,6 +70,7 @@ export const EDUCATION_PROGRAMS: EducationProgram[] = [
     knowledgeReward: 7,
     reputationReward: 3,
     certificationReward: 'coding-bootcamp',
+    ...image('https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=80', 'Software apprentice coding at a laptop'),
   },
 ]
 

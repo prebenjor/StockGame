@@ -1,6 +1,6 @@
 import { FOOD_OPTION_MAP, HOUSING_OPTION_MAP, TRANSPORT_OPTION_MAP, WELLNESS_OPTION_MAP } from '../../features/lifestyle/data'
 import { money } from '../../game/core/format'
-import { getConditionTone, getCurrentJob, getMilestones, getTips } from '../../game/core/selectors'
+import { getConditionTone, getCurrentJob, getMilestones, getTips, getWeeklyRunway } from '../../game/core/selectors'
 import { getComplianceRisk, getCreditCardAccount, getCreditUtilization, getDebtService, getInterestRate, getLivingCost, getNetWorth, getPassiveIncomePreview, getRenovationCost, getSavingsRate, getTaxRate, getTradingFee, getWeeklyTaxEstimate, hasStableHousing, toWeeklyAmount } from '../../game/core/utils'
 import type { GameAction, GameState, Job } from '../../game/core/types'
 
@@ -9,35 +9,27 @@ type SummaryProps = {
   currentJob: Job
 }
 
-function formatAge(ageMonths: number) {
-  const years = Math.floor(ageMonths / 12)
-  const months = ageMonths % 12
-  return `${years}y ${months}m`
-}
-
 export function SummaryStats({ state, currentJob }: SummaryProps) {
   const passiveIncome = getPassiveIncomePreview(state)
   const housingLabel = HOUSING_OPTION_MAP[state.housingTier].title
   const bankingLabel = state.bankAccount ? 'Banked' : 'Unbanked'
+  const weeklyRunway = getWeeklyRunway(state)
 
   return (
     <section className="stat-grid">
       {[
         ['Cash', money(state.cash), undefined],
-        ['Age', formatAge(state.ageMonths), undefined],
-        ['Savings', money(state.savingsBalance), undefined],
+        ['Weekly Runway', money(weeklyRunway), weeklyRunway >= 0 ? 'positive' : 'negative'],
         ['Net Worth', money(getNetWorth(state)), undefined],
         ['Debt', money(state.debt), 'negative'],
-        ['Monthly Salary', money(currentJob.salary), undefined],
+        ['Main Pay', money(currentJob.salary), undefined],
         ['Passive Income', money(passiveIncome), undefined],
-        ['Economy', state.economyPhase, undefined],
-        ['Inflation', `${state.inflation.toFixed(1)}%`, undefined],
-        ['Credit Score', String(state.creditScore), undefined],
+        ['Credit', String(state.creditScore), undefined],
         ['Knowledge', String(state.knowledge), undefined],
-        ['Base Rate', `${state.baseRate.toFixed(1)}%`, undefined],
-        ['Bank Trust', String(state.bankTrust), undefined],
         ['Housing', housingLabel, hasStableHousing(state) ? undefined : 'negative'],
         ['Banking', bankingLabel, state.bankAccount ? undefined : 'negative'],
+        ['Economy', state.economyPhase, undefined],
+        ['Inflation', `${state.inflation.toFixed(1)}%`, undefined],
       ].map(([label, value, tone]) => (
         <article className="stat-card" key={label}>
           <span>{label}</span>

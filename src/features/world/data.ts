@@ -1,5 +1,7 @@
 import type { Contact, District, LifeEvent, MonthlyEvent, Rival } from '../../game/core/types'
 
+const image = (imageUrl: string, imageAlt: string) => ({ imageUrl, imageAlt })
+
 export const MONTHLY_EVENTS: MonthlyEvent[] = [
   {
     title: 'Quiet month',
@@ -187,10 +189,10 @@ export const DISTRICTS: District[] = [
 export const DISTRICT_MAP = Object.fromEntries(DISTRICTS.map((item) => [item.id, item])) as Record<string, District>
 
 export const CONTACTS: Contact[] = [
-  { id: 'broker', name: 'Elena Park', role: 'Broker', description: 'Finds properties before they hit the public feed.', perk: 'Off-market property deals' },
-  { id: 'banker', name: 'Marcus Vale', role: 'Banker', description: 'Can smooth financing and improve terms when he trusts you.', perk: 'Better credit opportunities' },
-  { id: 'recruiter', name: 'Jules Mercer', role: 'Recruiter', description: 'Pushes job leads your way when your reputation rises.', perk: 'Higher-paying job leads' },
-  { id: 'contractor', name: 'Rina Solis', role: 'Contractor', description: 'Helps cut repair and renovation costs when you send steady work.', perk: 'Renovation discounts and repair help' },
+  { id: 'broker', name: 'Elena Park', role: 'Broker', description: 'Finds properties before they hit the public feed.', perk: 'Off-market property deals', ...image('https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1200&q=80', 'Professional woman in a blazer smiling at camera') },
+  { id: 'banker', name: 'Marcus Vale', role: 'Banker', description: 'Can smooth financing and improve terms when he trusts you.', perk: 'Better credit opportunities', ...image('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=1200&q=80', 'Professional man in office attire seated indoors') },
+  { id: 'recruiter', name: 'Jules Mercer', role: 'Recruiter', description: 'Pushes job leads your way when your reputation rises.', perk: 'Higher-paying job leads', ...image('https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=1200&q=80', 'Recruiter portrait in a bright office setting') },
+  { id: 'contractor', name: 'Rina Solis', role: 'Contractor', description: 'Helps cut repair and renovation costs when you send steady work.', perk: 'Renovation discounts and repair help', ...image('https://images.unsplash.com/photo-1522204523234-8729aa6e3d5f?auto=format&fit=crop&w=1200&q=80', 'Contractor wearing a work shirt inside a renovation site') },
 ]
 
 export const CONTACT_MAP = Object.fromEntries(CONTACTS.map((item) => [item.id, item])) as Record<string, Contact>
@@ -205,6 +207,7 @@ export const RIVALS: Rival[] = [
     focusDistrictId: 'arts',
     pressure: 16,
     rivalry: 14,
+    ...image('https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=1200&q=80', 'Sharp dressed landlord type standing confidently outdoors'),
   },
   {
     id: 'dorian',
@@ -215,6 +218,7 @@ export const RIVALS: Rival[] = [
     focusDistrictId: 'midtown',
     pressure: 18,
     rivalry: 12,
+    ...image('https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=1200&q=80', 'Founder style portrait of a man in a dark jacket'),
   },
   {
     id: 'noah',
@@ -225,5 +229,6 @@ export const RIVALS: Rival[] = [
     focusDistrictId: 'heights',
     pressure: 12,
     rivalry: 10,
+    ...image('https://images.unsplash.com/photo-1504593811423-6dd665756598?auto=format&fit=crop&w=1200&q=80', 'Young trader portrait in modern city light'),
   },
 ]

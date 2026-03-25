@@ -8,6 +8,16 @@ type Props = {
   dispatch: React.Dispatch<GameAction>
 }
 
+function CardMedia({ imageUrl, imageAlt }: { imageUrl?: string; imageAlt?: string }) {
+  if (!imageUrl) return null
+
+  return (
+    <div className="card-media">
+      <img src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
+    </div>
+  )
+}
+
 export function EducationPanel({ state, dispatch }: Props) {
   const activeProgram = state.educationEnrollment
     ? EDUCATION_PROGRAMS.find((program) => program.id === state.educationEnrollment?.programId) ?? null
@@ -47,6 +57,7 @@ export function EducationPanel({ state, dispatch }: Props) {
           const alreadyOwned = program.certificationReward ? state.certifications.includes(program.certificationReward) : false
           return (
             <article className="card" key={program.id}>
+              <CardMedia imageUrl={program.imageUrl} imageAlt={program.imageAlt} />
               <div className="card-topline">
                 <h3>{program.title}</h3>
                 <span>{money(program.totalCost)}</span>

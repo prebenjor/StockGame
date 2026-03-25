@@ -20,6 +20,10 @@ Original prompt: Build a fun comprehensive browser stock/wealth game where the p
 - Save key bumped again to `street-to-stock-save-v10` because side-job state was added.
 - Side work is no longer one flat slot. It now supports multiple concurrent commitments when schedules do not conflict, plus internships and seasonal roles with real availability windows.
 - Save key bumped again to `street-to-stock-save-v11` because side work moved from one id to an array of scheduled commitments.
+- Added card images across career, education, lifestyle, and network content so jobs, gigs, skills, living-condition options, contacts, rivals, and opportunities all read as more visual systems instead of plain text grids.
+- Shared media metadata now exists on more game content types, and the affected panels render those images through the same card-media pattern already used by property and business cards.
+- Verification passed with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- `npx playwright --version` now works outside the sandbox and reports Playwright `1.58.2`, but the repo still does not expose `render_game_to_text` or `advanceTime`, so the full `develop-web-game` automation loop is still blocked.
 
 TODO
 - Add browser-test hooks if the repo should support the `develop-web-game` Playwright loop.

@@ -8,10 +8,20 @@ type Props = {
   dispatch: React.Dispatch<GameAction>
 }
 
+function CardMedia({ imageUrl, imageAlt }: { imageUrl?: string; imageAlt?: string }) {
+  if (!imageUrl) return null
+
+  return (
+    <div className="card-media">
+      <img src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
+    </div>
+  )
+}
+
 type LifestyleCardProps<T extends HousingTier | TransportTier | FoodTier | WellnessTier> = {
   title: string
   currentId: T
-  options: Array<{ id: T; title: string; monthlyCost: number; description: string }>
+  options: Array<{ id: T; title: string; monthlyCost: number; description: string; imageUrl?: string; imageAlt?: string }>
   category: 'housing' | 'transport' | 'food' | 'wellness'
   state: GameState
   dispatch: React.Dispatch<GameAction>
@@ -37,6 +47,7 @@ function LifestyleCard<T extends HousingTier | TransportTier | FoodTier | Wellne
           const isCurrent = option.id === currentId
           return (
             <div className="lifestyle-option" key={option.id}>
+              <CardMedia imageUrl={option.imageUrl} imageAlt={option.imageAlt} />
               <div className="card-topline">
                 <strong>{option.title}</strong>
                 <span>{money(option.monthlyCost)}/mo</span>

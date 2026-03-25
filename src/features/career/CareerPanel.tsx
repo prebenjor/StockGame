@@ -8,6 +8,16 @@ type Props = {
   dispatch: React.Dispatch<GameAction>
 }
 
+function CardMedia({ imageUrl, imageAlt }: { imageUrl?: string; imageAlt?: string }) {
+  if (!imageUrl) return null
+
+  return (
+    <div className="card-media">
+      <img src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
+    </div>
+  )
+}
+
 function getSideJobReason(state: GameState, sideJob: typeof SIDE_JOBS[number]) {
   const baseReason = getLockedReason(sideJob.reputationRequired, sideJob.certifications, state)
   if (baseReason) return baseReason
@@ -37,6 +47,7 @@ export function CareerPanel({ state, dispatch }: Props) {
           const isCurrent = state.jobId === job.id
           return (
             <article className={`card ${isCurrent ? 'current' : ''}`} key={job.id}>
+              <CardMedia imageUrl={job.imageUrl} imageAlt={job.imageAlt} />
               <div className="card-topline">
                 <h3>{job.title}</h3>
                 <span>{money(toWeeklyAmount(job.salary))}/wk</span>
@@ -74,6 +85,7 @@ export function CareerPanel({ state, dispatch }: Props) {
           const seasonLabel = sideJob.seasonMonths?.join(', ')
           return (
             <article className={`card ${isCurrent ? 'current' : ''}`} key={sideJob.id}>
+              <CardMedia imageUrl={sideJob.imageUrl} imageAlt={sideJob.imageAlt} />
               <div className="card-topline">
                 <h3>{sideJob.title}</h3>
                 <span>{money(sideJob.weeklyPay)}/wk</span>
@@ -120,6 +132,7 @@ export function CareerPanel({ state, dispatch }: Props) {
           const bonus = gig.id === 'delivery' && hasUpgrade(state, 'scooter') ? ' + Scooter bonus' : gig.id === 'repair-callout' && hasUpgrade(state, 'toolkit') ? ' + Tool kit bonus' : ''
           return (
             <article className="card" key={gig.id}>
+              <CardMedia imageUrl={gig.imageUrl} imageAlt={gig.imageAlt} />
               <div className="card-topline">
                 <h3>{gig.title}</h3>
                 <span>{money(gig.payout)}</span>
@@ -149,6 +162,7 @@ export function CareerPanel({ state, dispatch }: Props) {
         <div className="card-grid compact">
           {COURSES.map((course) => (
             <article className="card" key={course.id}>
+              <CardMedia imageUrl={course.imageUrl} imageAlt={course.imageAlt} />
               <div className="card-topline">
                 <h3>{course.title}</h3>
                 <span>{money(course.cost)}</span>
@@ -164,6 +178,7 @@ export function CareerPanel({ state, dispatch }: Props) {
         <div className="card-grid compact">
           {UPGRADES.map((upgrade) => (
             <article className="card" key={upgrade.id}>
+              <CardMedia imageUrl={upgrade.imageUrl} imageAlt={upgrade.imageAlt} />
               <div className="card-topline">
                 <h3>{upgrade.title}</h3>
                 <span>{money(upgrade.cost)}</span>
