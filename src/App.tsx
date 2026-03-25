@@ -27,17 +27,17 @@ type ViewId =
   | 'network'
   | 'ledger'
 
-const VIEWS: Array<{ id: ViewId; label: string; kicker: string }> = [
-  { id: 'overview', label: 'Overview', kicker: 'Run state' },
-  { id: 'career', label: 'Career', kicker: 'Jobs and gigs' },
-  { id: 'education', label: 'Education', kicker: 'Skills and study' },
-  { id: 'lifestyle', label: 'Lifestyle', kicker: 'Living conditions' },
-  { id: 'banking', label: 'Banking', kicker: 'Cash and debt' },
-  { id: 'market', label: 'Market', kicker: 'Stocks and ETFs' },
-  { id: 'property', label: 'Property', kicker: 'Buildings and rent' },
-  { id: 'business', label: 'Business', kicker: 'Operators' },
-  { id: 'network', label: 'Network', kicker: 'Contacts and rivals' },
-  { id: 'ledger', label: 'Ledger', kicker: 'Reports and history' },
+const VIEWS: Array<{ id: ViewId; label: string; kicker: string; accent: string; accentSoft: string; glow: string }> = [
+  { id: 'overview', label: 'Overview', kicker: 'Run state', accent: '#cf7a18', accentSoft: 'rgba(255, 214, 150, 0.68)', glow: 'rgba(231, 143, 31, 0.24)' },
+  { id: 'career', label: 'Career', kicker: 'Jobs and gigs', accent: '#9e5d1e', accentSoft: 'rgba(233, 196, 154, 0.72)', glow: 'rgba(174, 101, 31, 0.2)' },
+  { id: 'education', label: 'Education', kicker: 'Skills and study', accent: '#346f8f', accentSoft: 'rgba(176, 214, 233, 0.7)', glow: 'rgba(57, 120, 160, 0.2)' },
+  { id: 'lifestyle', label: 'Lifestyle', kicker: 'Living conditions', accent: '#51773d', accentSoft: 'rgba(193, 224, 172, 0.72)', glow: 'rgba(95, 148, 64, 0.2)' },
+  { id: 'banking', label: 'Banking', kicker: 'Cash and debt', accent: '#145c55', accentSoft: 'rgba(167, 222, 213, 0.72)', glow: 'rgba(25, 128, 118, 0.2)' },
+  { id: 'market', label: 'Market', kicker: 'Stocks and ETFs', accent: '#1d6a8a', accentSoft: 'rgba(169, 216, 237, 0.72)', glow: 'rgba(35, 128, 171, 0.22)' },
+  { id: 'property', label: 'Property', kicker: 'Buildings and rent', accent: '#7b4f95', accentSoft: 'rgba(214, 192, 231, 0.72)', glow: 'rgba(124, 83, 162, 0.2)' },
+  { id: 'business', label: 'Business', kicker: 'Operators', accent: '#974545', accentSoft: 'rgba(239, 194, 194, 0.72)', glow: 'rgba(171, 82, 82, 0.2)' },
+  { id: 'network', label: 'Network', kicker: 'Contacts and rivals', accent: '#a44e2f', accentSoft: 'rgba(242, 202, 179, 0.72)', glow: 'rgba(196, 101, 57, 0.2)' },
+  { id: 'ledger', label: 'Ledger', kicker: 'Reports and history', accent: '#5f5a8e', accentSoft: 'rgba(206, 202, 236, 0.72)', glow: 'rgba(103, 96, 173, 0.2)' },
 ]
 
 function App() {
@@ -85,6 +85,13 @@ function App() {
             className={`view-chip ${activeView === view.id ? 'active' : ''}`}
             onClick={() => setActiveView(view.id)}
             type="button"
+            style={
+              {
+                '--chip-accent': view.accent,
+                '--chip-accent-soft': view.accentSoft,
+                '--chip-glow': view.glow,
+              } as React.CSSProperties
+            }
           >
             <span>{view.kicker}</span>
             <strong>{view.label}</strong>
