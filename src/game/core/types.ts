@@ -19,6 +19,25 @@ export type Gig = {
   needsProperty?: boolean
 }
 
+export type SideJob = {
+  id: string
+  title: string
+  category: 'shift' | 'internship' | 'seasonal' | 'freelance'
+  schedule: 'daytime' | 'evening' | 'weekend' | 'flex'
+  commitment: 'light' | 'medium' | 'heavy'
+  weeklyPay: number
+  reputationRequired: number
+  certifications: string[]
+  description: string
+  weeklyStress: number
+  weeklyEnergy: number
+  reputationGain: number
+  knowledgeGain?: number
+  contactId?: string
+  seasonMonths?: number[]
+  bankAccountRequired?: boolean
+}
+
 export type Course = {
   id: string
   title: string
@@ -141,11 +160,15 @@ export type Stock = {
   symbol: string
   name: string
   sector: string
+  assetType: 'stock' | 'etf'
+  thesis: string
   price: number
   drift: number
   volatility: number
   dividend: number
   change: number
+  expenseRatio?: number
+  earningsMonth?: number
 }
 
 export type Holding = {
@@ -208,7 +231,18 @@ export type EducationEnrollment = {
 
 export type LogEntry = {
   id: string
+  week: number
   month: number
+  title: string
+  detail: string
+  tone: Tone
+}
+
+export type MarketNews = {
+  id: string
+  week: number
+  month: number
+  symbol: string
   title: string
   detail: string
   tone: Tone
@@ -320,6 +354,8 @@ export type Opportunity = {
 }
 
 export type GameState = {
+  week: number
+  weekOfMonth: number
   month: number
   ageMonths: number
   actionPoints: number
@@ -347,11 +383,14 @@ export type GameState = {
   foodTier: FoodTier
   wellnessTier: WellnessTier
   jobId: string
+  sideJobIds: string[]
   certifications: string[]
   upgrades: string[]
   educationEnrollment: EducationEnrollment | null
   market: Stock[]
   holdings: Record<string, Holding>
+  watchlist: string[]
+  marketNews: MarketNews[]
   bondHoldings: BondHolding[]
   debtAccounts: DebtAccount[]
   districtStates: DistrictState[]
@@ -373,6 +412,8 @@ export type GameState = {
 export type GameAction =
   | { type: 'RESET' }
   | { type: 'TAKE_JOB'; jobId: string }
+  | { type: 'TAKE_SIDE_JOB'; sideJobId: string }
+  | { type: 'DROP_SIDE_JOB'; sideJobId: string }
   | { type: 'RUN_GIG'; gigId: string }
   | { type: 'OPEN_BANK_ACCOUNT' }
   | { type: 'OPEN_CREDIT_CARD' }
@@ -399,8 +440,10 @@ export type GameAction =
   | { type: 'SELL_BUSINESS'; businessUid: string }
   | { type: 'BUY_STOCK'; symbol: string; shares: number }
   | { type: 'SELL_STOCK'; symbol: string; shares: number }
+  | { type: 'TOGGLE_WATCHLIST'; symbol: string }
   | { type: 'REPAY_DEBT'; amount: number }
   | { type: 'PAY_TAXES'; amount: number }
   | { type: 'COMPLIANCE_REVIEW' }
   | { type: 'TAKE_LOAN' }
+  | { type: 'END_WEEK' }
   | { type: 'END_MONTH' }

@@ -1,24 +1,28 @@
 import { JOBS } from '../../features/career/data'
 import { CONTACT_MAP } from '../../features/world/data'
 import type { GameState } from './types'
-import { canOpenCreditCard, getComplianceRisk, getCreditUtilization, getDebtService, getLivingCost, getNetWorth, getPassiveIncomePreview, hasCertification, hasStableHousing, hasUpgrade } from './utils'
+import { canOpenCreditCard, getComplianceRisk, getCreditUtilization, getDebtService, getNetWorth, getPassiveIncomePreview, getWeeklyPassiveIncomePreview, getWeeklyLivingCost, hasCertification, hasStableHousing, hasUpgrade, toWeeklyAmount, WEEKS_PER_MONTH } from './utils'
 
 export function getCurrentJob(state: GameState) {
   return JOBS.find((job) => job.id === state.jobId) ?? JOBS[0]
 }
 
-export function getMonthlyRunway(state: GameState) {
+export function getWeeklyRunway(state: GameState) {
   const currentJob = getCurrentJob(state)
-  const livingCost = getLivingCost(state)
-  const debtService = getDebtService(state)
-  const passiveIncome = getPassiveIncomePreview(state)
+  const livingCost = getWeeklyLivingCost(state)
+  const debtService = toWeeklyAmount(getDebtService(state))
+  const passiveIncome = getWeeklyPassiveIncomePreview(state)
   const healthPenalty = state.health < 35 ? 0.88 : 1
   const energyPenalty = state.energy < 25 ? 0.92 : 1
   const stabilityPenalty = hasStableHousing(state) ? 1 : 0.82
   const bankingPenalty = state.bankAccount ? 1 : 0.95
   const macroSalaryMultiplier = Math.max(0.72, Math.min(1.12, 1.04 - state.unemployment / 18 + state.marketSentiment / 60))
-  const estimatedSalary = Math.round(currentJob.salary * healthPenalty * energyPenalty * stabilityPenalty * bankingPenalty * macroSalaryMultiplier)
+  const estimatedSalary = toWeeklyAmount(Math.round(currentJob.salary * healthPenalty * energyPenalty * stabilityPenalty * bankingPenalty * macroSalaryMultiplier))
   return estimatedSalary + passiveIncome - livingCost - debtService
+}
+
+export function getMonthlyRunway(state: GameState) {
+  return getWeeklyRunway(state) * WEEKS_PER_MONTH
 }
 
 export function getMilestones(state: GameState) {
@@ -26,7 +30,7 @@ export function getMilestones(state: GameState) {
   return [
     { label: 'Secure stable housing', complete: hasStableHousing(state) },
     { label: 'Open a bank account', complete: state.bankAccount },
-    { label: 'Reach positive monthly runway', complete: getMonthlyRunway(state) >= 0 },
+    { label: 'Reach positive weekly runway', complete: getWeeklyRunway(state) >= 0 },
     { label: 'Own your first cashflow asset', complete: state.properties.some((property) => property.rented) || state.businesses.length > 0 || passiveIncome > 0 },
     { label: 'Become debt free', complete: state.debt <= 0 },
     { label: 'Build a $50k empire', complete: getNetWorth(state) >= 50000 },
@@ -35,10 +39,12 @@ export function getMilestones(state: GameState) {
 
 export function getTips(state: GameState) {
   const tips: string[] = []
-  if (state.month <= 3) tips.push('The first few months are survival-heavy. Protect energy and cash first, then reach for leverage.')
+  if (state.month <= 3) tips.push('The first stretch is survival-heavy. Protect energy and cash first, then reach for leverage.')
   if (!state.bankAccount) tips.push('Open a bank account early. The whole game stays possible without it, but fees and loan terms are much worse.')
   if (!state.educationEnrollment && state.bankAccount && state.reputation >= 1 && state.knowledge < 4) tips.push('Education is now a real long-term system. A slower financed program can be cheaper than brute-forcing every credential in cash.')
   if (state.educationEnrollment) tips.push('An education program is active. It will cut into runway for a few months, but it compounds job access and knowledge once completed.')
+  if (state.sideJobIds.length === 0 && state.week <= 8) tips.push('Take a recurring side job once your weekly rhythm can handle it. It is steadier than living entirely off one-off gigs.')
+  if (state.sideJobIds.length > 0 && state.energy < 35) tips.push('Your weekly side-work load may be too high for your current recovery. Dropping one commitment for a week can be the right move.')
   if (canOpenCreditCard(state)) tips.push('Your bank profile is finally good enough for a starter credit card. Use it as a buffer, not as permanent income.')
   if (getCreditUtilization(state) >= 0.6) tips.push('Credit-card utilization is elevated. Pay it down before your score and future loan terms get worse.')
   if (!hasStableHousing(state)) tips.push('Stable housing is not a hard gate, but shelter-level living is burning energy and job income every month.')
@@ -46,6 +52,8 @@ export function getTips(state: GameState) {
   if (state.foodTier === 'skip-meals') tips.push('Skipped meals are cheap, but they now feed directly into harsher early-life event rolls and lower recovery.')
   if (state.storyFlags.includes('room-lead-open') || state.storyFlags.includes('transport-deal-open') || state.storyFlags.includes('neighbor-network-open')) tips.push('A survival story lead is live. Check the Network panel before ending the month and letting it sit there.')
   if (!hasCertification(state, 'sales-course')) tips.push('Use the cheapest gigs first and buy earning power. Sales Course is still the first clean jump.')
+  if (state.watchlist.length === 0) tips.push('Start a watchlist. The market is easier to read when you track a few names instead of staring at every ticker equally.')
+  if (!state.market.some((stock) => stock.assetType === 'etf' && state.holdings[stock.symbol])) tips.push('ETFs are now in the market. They are the cleanest bridge between holding cash and taking single-name earnings risk.')
   if (state.properties.length === 0) tips.push('Property is technically open, but the first good timing window usually comes after you stop living month to month.')
   if (state.debt > 3000) tips.push('High debt compounds against you every month. Chip it down when a good month lands.')
   if (state.taxDue > 1500) tips.push('Your tax bill is stacking up. Start paying it down before filing month forces expensive borrowing.')

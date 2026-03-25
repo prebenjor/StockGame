@@ -69,7 +69,7 @@ export function NetworkPanel({ state, dispatch }: Props) {
           <span className="panel-kicker">Openings</span>
           <h2>Current opportunities</h2>
         </div>
-        <p>Claim them before the month turns over.</p>
+        <p>Claim them before the current month rolls over at the end of week four.</p>
       </div>
 
       <div className="card-grid">

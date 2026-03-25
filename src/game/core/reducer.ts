@@ -1,5 +1,5 @@
 import { BOND_MAP } from '../../features/banking/data'
-import { COURSE_MAP, GIG_MAP, JOB_MAP, UPGRADE_MAP } from '../../features/career/data'
+import { COURSE_MAP, GIG_MAP, JOB_MAP, SIDE_JOB_MAP, UPGRADE_MAP } from '../../features/career/data'
 import { EDUCATION_PROGRAM_MAP } from '../../features/education/data'
 import { BUSINESS_MAP } from '../../features/business/data'
 import { BASE_MARKET } from '../../features/market/data'
@@ -7,8 +7,8 @@ import { PROPERTIES, PROPERTY_MAP, TENANT_PROFILES, TENANT_PROFILE_MAP } from '.
 import { CONTACTS, DISTRICTS, DISTRICT_MAP, FOOD_SURVIVAL_EVENTS, HOUSING_SURVIVAL_EVENTS, LIFE_EVENTS, MONTHLY_EVENTS, RIVALS, SHARED_HOUSING_EVENTS, STARTER_BREAK_EVENTS, TRANSPORT_SURVIVAL_EVENTS } from '../../features/world/data'
 import { money } from './format'
 import { hydrateState } from './storage'
-import type { ContactState, Course, DebtAccount, GameAction, GameState, LifeEvent, MonthlySnapshot, Opportunity, Tone } from './types'
-import { canBuyBusiness, canBuyProperty, canOpenCreditCard, canRunGig, canTakeBusinessLoan, canTakeJob, clamp, getBondValue, getBondYield, getBusinessDebtBalance, getBusinessMonthlyProfit, getBusinessValue, getComplianceRisk, getCreditCardAccount, getCreditUtilization, getDebtTotal, getInterestRate, getLifestyleConditionShift, getLifestyleSwitchCost, getLivingCost, getLockedReason, getMonthlyTaxEstimate, getNetWorth, getPassiveIncomePreview, getPropertyAskingPrice, getPropertyRent, getPropertyUpkeep, getPropertyValue, getRenovationBoost, getRenovationCost, getSavingsRate, getTradingFee, hasStableHousing, hasUpgrade, randomBetween, randomInt, randomItem, roundPrice } from './utils'
+import type { ContactState, Course, DebtAccount, GameAction, GameState, LifeEvent, MarketNews, MonthlySnapshot, Opportunity, Tone } from './types'
+import { canBuyBusiness, canBuyProperty, canOpenCreditCard, canRunGig, canTakeBusinessLoan, canTakeJob, canTakeSideJob, clamp, getBondValue, getBondYield, getBusinessDebtBalance, getBusinessMonthlyProfit, getBusinessValue, getComplianceRisk, getCreditCardAccount, getCreditUtilization, getDebtTotal, getInterestRate, getLifestyleConditionShift, getLifestyleSwitchCost, getLivingCost, getLockedReason, getMonthlyTaxEstimate, getNetWorth, getPassiveIncomePreview, getPropertyAskingPrice, getPropertyRent, getPropertyUpkeep, getPropertyValue, getRenovationBoost, getRenovationCost, getSavingsRate, getTradingFee, hasStableHousing, hasUpgrade, randomBetween, randomInt, randomItem, roundPrice, toWeeklyAmount, WEEKS_PER_MONTH } from './utils'
 
 function getEconomyPhase(state: Pick<GameState, 'unemployment' | 'housingDemand' | 'marketSentiment' | 'baseRate'>): GameState['economyPhase'] {
   if (state.unemployment >= 7.2 || state.marketSentiment <= -5.5) return 'recession'
@@ -21,7 +21,7 @@ function getEconomyPhase(state: Pick<GameState, 'unemployment' | 'housingDemand'
 function pushLog(state: GameState, title: string, detail: string, tone: Tone = 'neutral') {
   return {
     ...state,
-    log: [{ id: `${state.month}-${state.log.length}-${title}`, month: state.month, title, detail, tone }, ...state.log].slice(0, 18),
+    log: [{ id: `${state.week}-${state.log.length}-${title}`, week: state.week, month: state.month, title, detail, tone }, ...state.log].slice(0, 18),
   }
 }
 
@@ -118,6 +118,18 @@ function adjustContact(state: GameState, contactId: string, amount: number) {
 function addStoryFlag(state: GameState, flag: string) {
   if (state.storyFlags.includes(flag)) return state
   return { ...state, storyFlags: [...state.storyFlags, flag] }
+}
+
+function createMarketNews(week: number, month: number, symbol: string, title: string, detail: string, tone: Tone): MarketNews {
+  return {
+    id: `market-news-${week}-${symbol}-${title}`,
+    week,
+    month,
+    symbol,
+    title,
+    detail,
+    tone,
+  }
 }
 
 function syncDebtState(state: GameState) {
@@ -436,9 +448,11 @@ export function createInitialState(): GameState {
     },
   ]
   return {
+    week: 1,
+    weekOfMonth: 1,
     month: 1,
     ageMonths: 18 * 12,
-    actionPoints: 2,
+    actionPoints: 3,
     cash: 0,
     savingsBalance: 0,
     debt: 900,
@@ -463,11 +477,23 @@ export function createInitialState(): GameState {
     foodTier: 'skip-meals',
     wellnessTier: 'none',
     jobId: 'night-cleaning',
+    sideJobIds: [],
     certifications: [],
     upgrades: [],
     educationEnrollment: null,
     market: BASE_MARKET.map((stock) => ({ ...stock })),
     holdings: {},
+    watchlist: ['CITY', 'BYTE', 'BRIX'],
+    marketNews: [
+      createMarketNews(
+        1,
+        1,
+        'CITY',
+        'Opening watchlist',
+        'The broad-market ETF gives new players a lower-drama way to participate while they are still stabilizing.',
+        'neutral',
+      ),
+    ],
     bondHoldings: [],
     debtAccounts: initialDebtAccounts,
     districtStates,
@@ -486,6 +512,7 @@ export function createInitialState(): GameState {
     log: [
       {
         id: 'opening-note',
+        week: 1,
         month: 1,
         title: 'Fresh start',
         detail: 'You are 18, fresh out of high school, with no cash, unstable housing, no bank account, weak health, and just enough work access to begin climbing.',
@@ -505,7 +532,31 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   if (action.type === 'TAKE_JOB') {
     const job = JOB_MAP[action.jobId]
     if (!job || !canTakeJob(state, job)) return state
-    return pushLog(adjustContact(applyConditionShift({ ...state, actionPoints: state.actionPoints - 1, jobId: job.id }, { reputation: 1, stress: 4, energy: -6 }), 'recruiter', 3), 'New day job', `You switched into ${job.title}. Monthly salary is now ${money(job.salary)}.`, 'good')
+    return pushLog(adjustContact(applyConditionShift({ ...state, actionPoints: state.actionPoints - 1, jobId: job.id }, { reputation: 1, stress: 4, energy: -6 }), 'recruiter', 3), 'New day job', `You switched into ${job.title}. Base pay is now ${money(toWeeklyAmount(job.salary))} a week.`, 'good')
+  }
+
+  if (action.type === 'TAKE_SIDE_JOB') {
+    const sideJob = SIDE_JOB_MAP[action.sideJobId]
+    if (!sideJob || !canTakeSideJob(state, sideJob)) return state
+    return pushLog(
+      sideJob.contactId
+        ? adjustContact({ ...state, sideJobIds: [...state.sideJobIds, sideJob.id] }, sideJob.contactId, 2)
+        : { ...state, sideJobIds: [...state.sideJobIds, sideJob.id] },
+      'Side job added',
+      `${sideJob.title} is now part of your weekly routine for ${money(sideJob.weeklyPay)} per week on the ${sideJob.schedule} schedule.`,
+      'good',
+    )
+  }
+
+  if (action.type === 'DROP_SIDE_JOB') {
+    if (!state.sideJobIds.includes(action.sideJobId)) return state
+    const sideJob = SIDE_JOB_MAP[action.sideJobId]
+    return pushLog(
+      { ...state, sideJobIds: state.sideJobIds.filter((id) => id !== action.sideJobId) },
+      'Side job dropped',
+      `${sideJob?.title ?? 'That side job'} came off your weekly calendar.`,
+      'neutral',
+    )
   }
 
   if (action.type === 'RUN_GIG') {
@@ -1337,6 +1388,23 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     return pushLog(applyConditionShift({ ...state, cash: state.cash + proceeds, holdings }, { stress: -2 }), 'Stock sale', `You sold ${action.shares} share${action.shares > 1 ? 's' : ''} of ${stock.symbol} and cleared ${money(proceeds)} after fees.`)
   }
 
+  if (action.type === 'TOGGLE_WATCHLIST') {
+    const stock = state.market.find((item) => item.symbol === action.symbol)
+    if (!stock) return state
+    const watching = state.watchlist.includes(action.symbol)
+    return pushLog(
+      {
+        ...state,
+        watchlist: watching
+          ? state.watchlist.filter((symbol) => symbol !== action.symbol)
+          : [...state.watchlist, action.symbol],
+      },
+      watching ? 'Watchlist trimmed' : 'Watchlist updated',
+      watching ? `${stock.symbol} came off your watchlist.` : `${stock.symbol} is now on your watchlist so you can track it more closely.`,
+      'neutral',
+    )
+  }
+
   if (action.type === 'REPAY_DEBT') {
     if (state.cash <= 0 || state.debtAccounts.length === 0) return state
     const repayment = Math.min(action.amount, state.cash, state.debt)
@@ -1404,13 +1472,37 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     )
   }
 
-  if (action.type === 'END_MONTH') {
-    const event = randomItem(MONTHLY_EVENTS)
-    const nextInflation = clamp(Number((state.inflation + event.inflationShift + randomBetween(-0.2, 0.2)).toFixed(1)), 1.2, 8.6)
-    const nextBaseRate = clamp(Number((state.baseRate + event.baseRateShift + randomBetween(-0.15, 0.15)).toFixed(1)), 2.2, 7.4)
-    const nextUnemployment = clamp(Number((state.unemployment + event.unemploymentShift + randomBetween(-0.2, 0.2)).toFixed(1)), 2.8, 9.6)
-    const nextHousingDemand = clamp(Number((state.housingDemand + event.housingDemandShift + randomBetween(-0.8, 0.8)).toFixed(1)), -8, 10)
-    const nextMarketSentiment = clamp(Number((state.marketSentiment + event.marketSentimentShift + randomBetween(-0.9, 0.9)).toFixed(1)), -10, 10)
+  if (action.type === 'END_WEEK' || action.type === 'END_MONTH') {
+    const isMonthEnd = action.type === 'END_MONTH' || state.weekOfMonth === WEEKS_PER_MONTH
+    const event = isMonthEnd
+      ? randomItem(MONTHLY_EVENTS)
+      : {
+          title: 'Weekly reset',
+          detail: 'A regular week closed without a major macro shock, but the grind still moved your run forward.',
+          marketBoost: 0,
+          propertyRentBoost: 0,
+          sectorBoosts: {},
+          inflationShift: 0,
+          baseRateShift: 0,
+          unemploymentShift: 0,
+          housingDemandShift: 0,
+          marketSentimentShift: 0,
+        }
+    const nextInflation = isMonthEnd
+      ? clamp(Number((state.inflation + event.inflationShift + randomBetween(-0.2, 0.2)).toFixed(1)), 1.2, 8.6)
+      : state.inflation
+    const nextBaseRate = isMonthEnd
+      ? clamp(Number((state.baseRate + event.baseRateShift + randomBetween(-0.15, 0.15)).toFixed(1)), 2.2, 7.4)
+      : state.baseRate
+    const nextUnemployment = isMonthEnd
+      ? clamp(Number((state.unemployment + event.unemploymentShift + randomBetween(-0.2, 0.2)).toFixed(1)), 2.8, 9.6)
+      : state.unemployment
+    const nextHousingDemand = isMonthEnd
+      ? clamp(Number((state.housingDemand + event.housingDemandShift + randomBetween(-0.8, 0.8)).toFixed(1)), -8, 10)
+      : state.housingDemand
+    const nextMarketSentiment = isMonthEnd
+      ? clamp(Number((state.marketSentiment + event.marketSentimentShift + randomBetween(-0.9, 0.9)).toFixed(1)), -10, 10)
+      : state.marketSentiment
     const nextPhase = getEconomyPhase({
       unemployment: nextUnemployment,
       housingDemand: nextHousingDemand,
@@ -1418,7 +1510,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       baseRate: nextBaseRate,
     })
 
-    const nextDistrictStates = state.districtStates.map((districtState) => {
+    const nextDistrictStates = isMonthEnd ? state.districtStates.map((districtState) => {
       const district = DISTRICT_MAP[districtState.districtId]
       const swing = randomInt(-5, 5)
       const baseline = district.id === 'arts' ? 1 : district.id === 'harbor' ? -1 : 0
@@ -1427,13 +1519,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         ...districtState,
         momentum: clamp(districtState.momentum + swing + baseline + macroPull, -18, 22),
       }
-    })
+    }) : state.districtStates.map((districtState) => ({ ...districtState }))
 
     const nextState: GameState = {
       ...state,
-      month: state.month + 1,
-      ageMonths: state.ageMonths + 1,
-      actionPoints: 2,
+      week: state.week + 1,
+      weekOfMonth: isMonthEnd ? 1 : state.weekOfMonth + 1,
+      month: isMonthEnd ? state.month + 1 : state.month,
+      ageMonths: isMonthEnd ? state.ageMonths + 1 : state.ageMonths,
+      actionPoints: 3,
       savingsBalance: state.savingsBalance,
       economyPhase: nextPhase,
       inflation: nextInflation,
@@ -1443,21 +1537,25 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       marketSentiment: nextMarketSentiment,
       market: state.market.map((stock) => ({ ...stock })),
       holdings: { ...state.holdings },
+      watchlist: [...state.watchlist],
+      marketNews: [...state.marketNews],
       bondHoldings: state.bondHoldings.map((holding) => ({ ...holding })),
       debtAccounts: state.debtAccounts.map((account) => ({ ...account })),
       districtStates: nextDistrictStates,
       rivals: state.rivals.map((rival) => ({ ...rival })),
-      propertyListings: [],
+      propertyListings: isMonthEnd ? [] : state.propertyListings.map((listing) => ({ ...listing })),
       properties: state.properties.map((property) => ({ ...property })),
       businesses: state.businesses.map((business) => ({ ...business })),
-      opportunities: [],
+      opportunities: isMonthEnd ? [] : [...state.opportunities],
       storyFlags: [...state.storyFlags],
       history: [...state.history],
       log: [...state.log],
     }
     const currentJob = JOB_MAP[state.jobId]
     const notes: string[] = [event.detail]
+    const monthNews: MarketNews[] = []
     const currentEducation = state.educationEnrollment ? EDUCATION_PROGRAM_MAP[state.educationEnrollment.programId] : null
+    const currentSideJobs = state.sideJobIds.map((id) => SIDE_JOB_MAP[id]).filter(Boolean)
     const dividendMultiplier = hasUpgrade(state, 'broker-terminal') ? 1.25 : 1
     const lifestyleShift = getLifestyleConditionShift(state)
     const healthPenalty = state.health < 35 ? 0.88 : 1
@@ -1467,7 +1565,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     const educationPenalty = currentEducation ? 0.94 : 1
     const knowledgeBonus = 1 + Math.min(state.knowledge, 12) / 150
     const macroSalaryMultiplier = clamp(1.04 - nextUnemployment / 18 + nextMarketSentiment / 60, 0.72, 1.12)
-    const salary = Math.round(currentJob.salary * healthPenalty * energyPenalty * stabilityPenalty * bankingPenalty * educationPenalty * knowledgeBonus * macroSalaryMultiplier)
+    const salary = toWeeklyAmount(Math.round(currentJob.salary * healthPenalty * energyPenalty * stabilityPenalty * bankingPenalty * educationPenalty * knowledgeBonus * macroSalaryMultiplier))
+    let sideJobIncome = 0
     let cash = state.cash + salary
     let debt = state.debt
     let rentalIncome = 0
@@ -1480,53 +1579,93 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     let debtService = 0
     let educationStress = 0
     let educationEnergy = 0
+    let sideJobStress = 0
+    let sideJobEnergy = 0
     let tenantStress = 0
     let tenantReputation = 0
     let businessStress = 0
     let rivalStress = 0
     let delinquentAccounts = 0
 
-    nextState.rivals.forEach((rival) => {
-      const playerPropertyCount = state.properties.filter((property) => property.districtId === rival.focusDistrictId).length
-      const playerBusinessCount = state.businesses.filter((business) => business.districtId === rival.focusDistrictId).length
-      const successSignal = playerPropertyCount + playerBusinessCount + (state.reputation >= 10 ? 1 : 0)
-      rival.rivalry = clamp(rival.rivalry + successSignal + (nextPhase === 'boom' ? 1 : 0) - (nextPhase === 'recession' ? 1 : 0), 0, 100)
-      rival.pressure = clamp(
-        rival.pressure + randomInt(-3, 4) + (rival.specialty === 'property' ? Math.round(nextHousingDemand / 3) : 0) + (rival.specialty === 'business' ? Math.round(nextMarketSentiment / 4) : 0),
-        6,
-        44,
-      )
-      if (Math.random() < 0.32) {
-        rival.focusDistrictId = nextDistrictStates.slice().sort((a, b) => b.momentum - a.momentum)[Math.floor(Math.random() * 2)].districtId
+    currentSideJobs.forEach((currentSideJob) => {
+      const inSeason = !currentSideJob.seasonMonths || currentSideJob.seasonMonths.includes(((state.month - 1) % 12) + 1)
+      if (!inSeason) return
+      let jobIncome = currentSideJob.weeklyPay
+      if (currentSideJob.id === 'delivery-route' && hasUpgrade(state, 'scooter')) jobIncome += 25
+      if (currentSideJob.id === 'handyman-helper' && hasUpgrade(state, 'toolkit')) jobIncome += 20
+      if (currentSideJob.id === 'market-intern' && hasUpgrade(state, 'broker-terminal')) jobIncome += 10
+      if (currentSideJob.id === 'startup-intern' && state.marketSentiment > 2) jobIncome += 15
+      sideJobIncome += jobIncome
+      sideJobStress += currentSideJob.weeklyStress + (currentEducation && currentSideJob.schedule === 'daytime' ? 2 : currentEducation ? 1 : 0)
+      sideJobEnergy += currentSideJob.weeklyEnergy + (currentEducation && currentSideJob.schedule === 'daytime' ? 2 : currentEducation ? 1 : 0)
+      nextState.reputation = clamp(nextState.reputation + currentSideJob.reputationGain, 0, 999)
+      nextState.knowledge = clamp(nextState.knowledge + (currentSideJob.knowledgeGain ?? 0), 0, 999)
+      if (currentSideJob.contactId) {
+        Object.assign(nextState, adjustContact(nextState, currentSideJob.contactId, 1))
       }
     })
-    nextState.propertyListings = generatePropertyListings({ month: state.month + 1, districtStates: nextDistrictStates, rivals: nextState.rivals })
+    if (sideJobIncome > 0) {
+      cash += sideJobIncome
+      notes.push(`${currentSideJobs.map((job) => job.title).join(', ')} added ${money(sideJobIncome)} this week.${currentEducation ? ' Balancing them beside education made the week tighter.' : ''}`)
+    }
+
+    if (isMonthEnd) {
+      nextState.rivals.forEach((rival) => {
+        const playerPropertyCount = state.properties.filter((property) => property.districtId === rival.focusDistrictId).length
+        const playerBusinessCount = state.businesses.filter((business) => business.districtId === rival.focusDistrictId).length
+        const successSignal = playerPropertyCount + playerBusinessCount + (state.reputation >= 10 ? 1 : 0)
+        rival.rivalry = clamp(rival.rivalry + successSignal + (nextPhase === 'boom' ? 1 : 0) - (nextPhase === 'recession' ? 1 : 0), 0, 100)
+        rival.pressure = clamp(
+          rival.pressure + randomInt(-3, 4) + (rival.specialty === 'property' ? Math.round(nextHousingDemand / 3) : 0) + (rival.specialty === 'business' ? Math.round(nextMarketSentiment / 4) : 0),
+          6,
+          44,
+        )
+        if (Math.random() < 0.32) {
+          rival.focusDistrictId = nextDistrictStates.slice().sort((a, b) => b.momentum - a.momentum)[Math.floor(Math.random() * 2)].districtId
+        }
+      })
+      nextState.propertyListings = generatePropertyListings({ month: state.month + 1, districtStates: nextDistrictStates, rivals: nextState.rivals })
+    }
 
     if (nextState.educationEnrollment) {
       const program = EDUCATION_PROGRAM_MAP[nextState.educationEnrollment.programId]
-      educationStress += program.monthlyStress
-      educationEnergy += program.monthlyEnergy
-      nextState.educationEnrollment = {
-        ...nextState.educationEnrollment,
-        monthsRemaining: nextState.educationEnrollment.monthsRemaining - 1,
-      }
-      notes.push(`${program.title} stayed in progress and took another month of study time.`)
-
-      if (nextState.educationEnrollment.monthsRemaining <= 0) {
-        nextState.knowledge = clamp(nextState.knowledge + program.knowledgeReward, 0, 999)
-        nextState.reputation = clamp(nextState.reputation + program.reputationReward, 0, 999)
-        if (program.certificationReward && !nextState.certifications.includes(program.certificationReward)) {
-          nextState.certifications = [...nextState.certifications, program.certificationReward]
+      educationStress += Math.max(1, Math.round(program.monthlyStress / WEEKS_PER_MONTH))
+      educationEnergy += Math.max(1, Math.round(program.monthlyEnergy / WEEKS_PER_MONTH))
+      if (isMonthEnd) {
+        nextState.educationEnrollment = {
+          ...nextState.educationEnrollment,
+          monthsRemaining: nextState.educationEnrollment.monthsRemaining - 1,
         }
-        nextState.educationEnrollment = null
-        notes.push(`${program.title} finished this month and added ${program.knowledgeReward} knowledge.`)
+        notes.push(`${program.title} stayed in progress and took another month of study time.`)
+
+        if (nextState.educationEnrollment.monthsRemaining <= 0) {
+          nextState.knowledge = clamp(nextState.knowledge + program.knowledgeReward, 0, 999)
+          nextState.reputation = clamp(nextState.reputation + program.reputationReward, 0, 999)
+          if (program.certificationReward && !nextState.certifications.includes(program.certificationReward)) {
+            nextState.certifications = [...nextState.certifications, program.certificationReward]
+          }
+          nextState.educationEnrollment = null
+          notes.push(`${program.title} finished this month and added ${program.knowledgeReward} knowledge.`)
+        }
+      }
+    }
+
+    if (isMonthEnd) {
+      const nextCalendarMonth = ((nextState.month - 1) % 12) + 1
+      const expiredSideJobs = nextState.sideJobIds.filter((id) => {
+        const sideJob = SIDE_JOB_MAP[id]
+        return sideJob?.seasonMonths && !sideJob.seasonMonths.includes(nextCalendarMonth)
+      })
+      if (expiredSideJobs.length > 0) {
+        nextState.sideJobIds = nextState.sideJobIds.filter((id) => !expiredSideJobs.includes(id))
+        notes.push(`${expiredSideJobs.map((id) => SIDE_JOB_MAP[id]?.title ?? id).join(', ')} rolled off because the season ended.`)
       }
     }
 
     nextState.properties.forEach((property) => {
       const template = PROPERTY_MAP[property.templateId]
       const district = DISTRICT_MAP[property.districtId]
-      maintenance += getPropertyUpkeep(property, nextState)
+      maintenance += toWeeklyAmount(getPropertyUpkeep(property, nextState))
       if (property.rented) {
         const tenant = property.tenantProfileId ? TENANT_PROFILE_MAP[property.tenantProfileId] : assignTenantProfile(property)
         property.tenantProfileId = tenant.id
@@ -1544,13 +1683,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           tenantReputation -= 1
           notes.push(`${template.title} in ${district.name} went into default and the unit came back vacant.`)
         } else if (paymentRoll < defaultRisk + lateRisk) {
-          const collected = Math.round(scheduledRent * 0.72)
+          const collected = toWeeklyAmount(Math.round(scheduledRent * 0.72))
           rentalIncome += collected
           property.missedPayments += 1
           tenantStress += 3
           notes.push(`${template.title} in ${district.name} only collected ${money(collected)} after a late payment.`)
         } else {
-          rentalIncome += scheduledRent
+          rentalIncome += toWeeklyAmount(scheduledRent)
           property.missedPayments = Math.max(0, property.missedPayments - 1)
         }
 
@@ -1562,12 +1701,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           notes.push(`${template.title} in ${district.name} lost its tenant and needs relisting.`)
         }
         if (property.rented && Math.random() < (property.condition < 50 ? 0.3 : 0.13) + district.risk * 0.35 + tenant.wear) {
-          const repairBill = Math.round(getPropertyUpkeep(property, nextState) * (property.condition < 50 ? 1.7 : 1.2))
+          const repairBill = toWeeklyAmount(Math.round(getPropertyUpkeep(property, nextState) * (property.condition < 50 ? 1.7 : 1.2)))
           maintenance += repairBill
           property.condition = clamp(property.condition - 6, 25, 100)
           notes.push(`${template.title} in ${district.name} needed ${money(repairBill)} in surprise repairs.`)
         }
-        if (property.rented) {
+        if (property.rented && isMonthEnd) {
           property.leaseMonthsRemaining = Math.max(0, property.leaseMonthsRemaining - 1)
           if (property.leaseMonthsRemaining === 0) {
             const renewalChance = clamp(tenant.reliability + property.condition / 180 + nextHousingDemand / 30 - nextUnemployment / 28, 0.2, 0.95)
@@ -1583,7 +1722,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           }
         }
       }
-      property.condition = clamp(property.condition - randomInt(property.rented ? 4 : 1, property.rented ? 9 : 4), 20, 100)
+      property.condition = clamp(property.condition - randomInt(property.rented ? 1 : 0, property.rented ? 3 : 1), 20, 100)
     })
 
     nextState.businesses.forEach((business) => {
@@ -1593,11 +1732,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const rivalPressure = nextState.rivals
         .filter((rival) => rival.specialty === 'business' && rival.focusDistrictId === business.districtId)
         .reduce((total, rival) => total + rival.pressure, 0)
-      const profit = getBusinessMonthlyProfit(business, nextState) - rivalPressure * 6
+      const profit = toWeeklyAmount(getBusinessMonthlyProfit(business, nextState) - rivalPressure * 6)
       businessIncome += profit
-      business.monthsOperating += 1
+      if (isMonthEnd) business.monthsOperating += 1
 
-      const incidentRisk = clamp(0.08 + Math.max(0, nextUnemployment - 5) / 20 + (business.condition < 55 ? 0.1 : 0), 0.05, 0.4)
+      const incidentRisk = clamp(0.025 + Math.max(0, nextUnemployment - 5) / 80 + (business.condition < 55 ? 0.04 : 0), 0.02, 0.18)
       if (Math.random() < incidentRisk) {
         const incidentCost = randomInt(180, 620)
         businessIncome -= incidentCost
@@ -1630,29 +1769,75 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     nextState.market.forEach((stock) => {
       const holding = nextState.holdings[stock.symbol]
-      if (holding) dividends += holding.shares * stock.dividend * dividendMultiplier
-      const macroMove = nextMarketSentiment / 220 + (nextPhase === 'recession' ? -0.01 : nextPhase === 'boom' ? 0.008 : 0)
-      const move = stock.drift + event.marketBoost + macroMove + (event.sectorBoosts[stock.sector] ?? 0) + randomBetween(-stock.volatility, stock.volatility) + (hasUpgrade(state, 'broker-terminal') ? 0.006 : 0)
+      if (holding) dividends += toWeeklyAmount(holding.shares * stock.dividend * dividendMultiplier)
+      const macroMove = nextMarketSentiment / 880 + (nextPhase === 'recession' ? -0.0025 : nextPhase === 'boom' ? 0.002 : 0)
+      const sectorMove = event.sectorBoosts[stock.sector] ?? 0
+      const etfBasketMove =
+        stock.assetType === 'etf'
+          ? ((event.sectorBoosts.tech ?? 0) + (event.sectorBoosts.consumer ?? 0) + (event.sectorBoosts.energy ?? 0) + (event.sectorBoosts.health ?? 0) + (event.sectorBoosts['real-estate'] ?? 0)) / 5
+          : 0
+      let earningsShock = 0
+      const earningsDue = isMonthEnd && stock.assetType === 'stock' && stock.earningsMonth !== undefined && ((nextState.month - stock.earningsMonth + 1200) % 3 === 0)
+      if (earningsDue) {
+        const earningsScore = stock.drift * 100 + nextMarketSentiment / 3 - nextUnemployment / 6 + randomBetween(-1.7, 1.7)
+        earningsShock = clamp(earningsScore / 100, -0.08, 0.08)
+        monthNews.unshift(
+          createMarketNews(
+            nextState.week,
+            nextState.month,
+            stock.symbol,
+            earningsShock >= 0 ? 'Earnings beat' : 'Earnings miss',
+            earningsShock >= 0
+              ? `${stock.name} printed a cleaner quarter than expected and sentiment improved.`
+              : `${stock.name} disappointed on earnings and the tape hit it immediately.`,
+            earningsShock >= 0 ? 'good' : 'bad',
+          ),
+        )
+      }
+      const expenseDrag = stock.assetType === 'etf' ? stock.expenseRatio ?? 0 : 0
+      const move =
+        stock.drift +
+        (isMonthEnd ? event.marketBoost : 0) +
+        macroMove +
+        (isMonthEnd ? sectorMove : 0) +
+        (isMonthEnd ? etfBasketMove : 0) +
+        earningsShock +
+        randomBetween(-stock.volatility / 2.6, stock.volatility / 2.6) +
+        (hasUpgrade(state, 'broker-terminal') ? 0.0015 : 0) -
+        expenseDrag
       const previousPrice = stock.price
       stock.price = roundPrice(Math.max(4, stock.price * (1 + move)))
       stock.change = Number((((stock.price - previousPrice) / previousPrice) * 100).toFixed(1))
+      if (nextState.watchlist.includes(stock.symbol) && Math.abs(stock.change) >= 7) {
+        monthNews.push(
+          createMarketNews(
+            nextState.week,
+            nextState.month,
+            stock.symbol,
+            stock.change >= 0 ? 'Watchlist spike' : 'Watchlist drop',
+            `${stock.symbol} moved ${stock.change >= 0 ? '+' : ''}${stock.change}% this month and tripped your watchlist alert.`,
+            stock.change >= 0 ? 'good' : 'bad',
+          ),
+        )
+      }
     })
+    nextState.marketNews = [...monthNews.slice(0, 6), ...nextState.marketNews].slice(0, 18)
 
     nextState.bondHoldings = nextState.bondHoldings
       .map((holding) => {
-        bondIncome += holding.principal * holding.couponRate
+        bondIncome += toWeeklyAmount(holding.principal * holding.couponRate)
         const nextMonthsRemaining = holding.monthsRemaining - 1
-        if (nextMonthsRemaining <= 0) {
+        if (isMonthEnd && nextMonthsRemaining <= 0) {
           cash += holding.principal
           notes.push(`${BOND_MAP[holding.templateId].title} matured and returned ${money(holding.principal)}.`)
           return null
         }
-        return { ...holding, monthsRemaining: nextMonthsRemaining }
+        return { ...holding, monthsRemaining: isMonthEnd ? nextMonthsRemaining : holding.monthsRemaining }
       })
       .filter((holding): holding is GameState['bondHoldings'][number] => holding !== null)
 
     if (state.bankAccount && nextState.savingsBalance > 0) {
-      savingsInterest = Math.round(nextState.savingsBalance * getSavingsRate(state))
+      savingsInterest = toWeeklyAmount(Math.round(nextState.savingsBalance * getSavingsRate(state)))
       nextState.savingsBalance += savingsInterest
     }
 
@@ -1660,7 +1845,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     cash += Math.round(bondIncome)
     cash -= maintenance
 
-    const livingCost = getLivingCost(state)
+    const livingCost = toWeeklyAmount(getLivingCost(state))
     const startingCreditUtilization = getCreditUtilization(state)
     const effectiveDebtRate =
       state.debtAccounts.length > 0 && state.debt > 0
@@ -1669,7 +1854,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     cash -= livingCost
     nextState.debtAccounts = nextState.debtAccounts
       .map((account) => {
-        const interestCharge = Math.round(account.principal * account.monthlyRate)
+        const interestCharge = toWeeklyAmount(Math.round(account.principal * account.monthlyRate))
         const principalWithInterest = account.principal + interestCharge
         const inDeferment = (account.deferMonthsRemaining ?? 0) > 0
         const nextAccount = {
@@ -1680,7 +1865,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         if (account.kind === 'credit-card') {
           nextAccount.minimumPayment = principalWithInterest <= 0 ? 35 : Math.max(35, Math.round(principalWithInterest * 0.09))
         }
-        const due = inDeferment ? 0 : Math.min(principalWithInterest, nextAccount.minimumPayment)
+        const due = inDeferment ? 0 : Math.min(principalWithInterest, toWeeklyAmount(nextAccount.minimumPayment))
         interest += interestCharge
 
         if (due === 0) {
@@ -1696,7 +1881,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           nextAccount.principal = Math.max(0, principalWithInterest - due)
           nextAccount.delinquentMonths = 0
         } else {
-          const lateFee = Math.max(18, Math.round(account.minimumPayment * 0.18))
+          const lateFee = toWeeklyAmount(Math.max(18, Math.round(account.minimumPayment * 0.18)))
           nextAccount.principal = principalWithInterest + lateFee
           nextAccount.delinquentMonths += 1
           delinquentAccounts += 1
@@ -1716,7 +1901,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         (account) => account.kind === 'business-loan' && account.linkedBusinessUid === business.uid && account.delinquentMonths > 0,
       )
       if (loanBalance > 0 && business.active) {
-        businessIncome -= Math.round(loanBalance * 0.004)
+        businessIncome -= toWeeklyAmount(Math.round(loanBalance * 0.004))
       }
       if (delinquentLoans.length > 0) {
         businessStress += delinquentLoans.length * 2
@@ -1730,7 +1915,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     })
 
     debt = getDebtTotal(nextState)
-    const monthlyTaxAccrual = getMonthlyTaxEstimate(nextState, rentalIncome + businessIncome + dividends + bondIncome + savingsInterest, salary)
+    const monthlyTaxAccrual = toWeeklyAmount(getMonthlyTaxEstimate(nextState, (rentalIncome + businessIncome + dividends + bondIncome + savingsInterest) * WEEKS_PER_MONTH, salary * WEEKS_PER_MONTH))
     nextState.taxDue = state.taxDue + monthlyTaxAccrual
     nextState.complianceScore = clamp(
       state.complianceScore - state.properties.length - state.businesses.length * 2 - (state.taxDue > 0 ? 1 : 0),
@@ -1746,7 +1931,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       notes.push(`A compliance issue cost ${money(fine)} in filings, penalties, and admin cleanup.`)
     }
 
-    if (state.month % 12 === 0) {
+    if (isMonthEnd && state.month % 12 === 0) {
       const filingPenalty = nextState.complianceScore < 55 ? randomInt(120, 480) : 0
       const filingPayment = Math.min(cash, nextState.taxDue + filingPenalty)
       cash -= filingPayment
@@ -1789,6 +1974,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     stressShift += businessStress
     stressShift += rivalStress
     stressShift += educationStress
+    stressShift += sideJobStress
 
     let healthShift = (state.stress > 70 ? -6 : state.stress < 35 ? 3 : -1) + lifestyleShift.health
     if (state.energy < 25) healthShift -= 3
@@ -1798,15 +1984,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     if (state.health < 35) energyShift -= 4
     if (state.cash === 0) energyShift -= 3
     energyShift -= educationEnergy
+    energyShift -= sideJobEnergy
 
     Object.assign(nextState, applyConditionShift(nextState, { stress: stressShift, health: healthShift, energy: energyShift, reputation: tenantReputation + lifestyleShift.reputation }))
 
     const lifeEventPool = getLifeEventPool(state)
-    const lifeEventChance = state.month <= 4 || state.housingTier === 'shelter' || state.foodTier === 'skip-meals'
-      ? 0.92
+    const lifeEventChance = state.month <= 2 || state.housingTier === 'shelter' || state.foodTier === 'skip-meals'
+      ? 0.32
       : state.stress > 60 || state.health < 45
-        ? 0.85
-        : 0.6
+        ? 0.24
+        : 0.16
     const lifeEvent = Math.random() < lifeEventChance ? randomItem(lifeEventPool) : null
     const stateAfterLife = lifeEvent ? applyLifeEvent(nextState, lifeEvent) : nextState
 
@@ -1853,24 +2040,25 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     const hottestDistrict = nextDistrictStates.slice().sort((a, b) => b.momentum - a.momentum)[0]
     const coldestDistrict = nextDistrictStates.slice().sort((a, b) => a.momentum - b.momentum)[0]
 
-    notes.unshift(`Salary ${money(salary)}, rent ${money(rentalIncome)}, business ${money(businessIncome)}, dividends ${money(dividends)}, bonds ${money(bondIncome)}.`)
-    if (salary < currentJob.salary) notes.push('Your condition cut into your monthly job performance.')
-    if (!hasStableHousing(state)) notes.push('Unstable housing shaved income and recovery this month.')
+    notes.unshift(`Weekly cashflow: wages ${money(salary)}, side work ${money(sideJobIncome)}, rent ${money(rentalIncome)}, business ${money(businessIncome)}, dividends ${money(dividends)}, bonds ${money(bondIncome)}.`)
+    if (salary < toWeeklyAmount(currentJob.salary)) notes.push('Your condition cut into your weekly job performance.')
+    if (!hasStableHousing(state)) notes.push(`Unstable housing shaved income and recovery this ${isMonthEnd ? 'month' : 'week'}.`)
     if (!state.bankAccount) notes.push('Working and trading without a bank account kept fees and financing terms ugly.')
-    if (state.transportTier === 'foot') notes.push('Walking and public transit kept your commute fragile this month.')
-    if (state.foodTier === 'skip-meals') notes.push('Running on skipped meals made the month physically harsher.')
+    if (state.transportTier === 'foot') notes.push(`Walking and public transit kept your commute fragile this ${isMonthEnd ? 'month' : 'week'}.`)
+    if (state.foodTier === 'skip-meals') notes.push(`Running on skipped meals made the ${isMonthEnd ? 'month' : 'week'} physically harsher.`)
     notes.push(`Upkeep was ${money(maintenance)} and living costs were ${money(livingCost)}.`)
     if (savingsInterest > 0) notes.push(`Savings paid ${money(savingsInterest)} at ${(getSavingsRate(state) * 100).toFixed(1)}%.`)
     notes.push(`Debt service was ${money(debtService)} and finance charges added ${money(interest)} at an effective ${(effectiveDebtRate * 100).toFixed(1)}%.`)
     notes.push(`Taxes accrued ${money(monthlyTaxAccrual)}. Tax due is now ${money(nextState.taxDue)} and compliance score is ${nextState.complianceScore}.`)
     notes.push(`Lifestyle: ${state.housingTier}, ${state.transportTier}, ${state.foodTier}, ${state.wellnessTier}.`)
     notes.push(`Macro regime is ${nextPhase} with inflation at ${nextInflation.toFixed(1)}%, unemployment at ${nextUnemployment.toFixed(1)}%, housing demand ${nextHousingDemand >= 0 ? '+' : ''}${nextHousingDemand.toFixed(1)}, and sentiment ${nextMarketSentiment >= 0 ? '+' : ''}${nextMarketSentiment.toFixed(1)}.`)
+    if (monthNews.length > 0) notes.push(`Market news: ${monthNews.slice(0, 2).map((item) => `${item.symbol} ${item.title.toLowerCase()}`).join('; ')}.`)
     notes.push(`${DISTRICT_MAP[hottestDistrict.districtId].name} is heating up. ${DISTRICT_MAP[coldestDistrict.districtId].name} is cooling off.`)
     notes.push(`${hottestRival.name} is the loudest rival right now, focused on ${DISTRICT_MAP[hottestRival.focusDistrictId].name}.`)
     notes.push(`Credit is now ${stateAfterLife.creditScore} and bank trust is ${stateAfterLife.bankTrust}.`)
-    if (endingCreditUtilization > 0) notes.push(`Credit-card utilization ended the month at ${(endingCreditUtilization * 100).toFixed(0)}% of your limit.`)
-    if (delinquentAccounts > 0) notes.push(`${delinquentAccounts} debt account${delinquentAccounts > 1 ? 's were' : ' was'} delinquent this month.`)
-    if (stateAfterLife.opportunities.length > 0) notes.push(`${stateAfterLife.opportunities.length} contact-driven opportunities opened up this month.`)
+    if (endingCreditUtilization > 0) notes.push(`Credit-card utilization ended the week at ${(endingCreditUtilization * 100).toFixed(0)}% of your limit.`)
+    if (delinquentAccounts > 0) notes.push(`${delinquentAccounts} debt account${delinquentAccounts > 1 ? 's were' : ' was'} delinquent this week.`)
+    if (stateAfterLife.opportunities.length > 0) notes.push(`${stateAfterLife.opportunities.length} contact-driven opportunities are live this month.`)
 
     if (stateAfterLife.cash < 0) {
       const rollover = Math.abs(stateAfterLife.cash)
@@ -1885,38 +2073,40 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       })
       stateAfterLife.debtAccounts = [...stateAfterLife.debtAccounts, created.account]
       stateAfterLife.nextDebtId = created.nextDebtId
-      notes.push(`You had to float ${money(Math.abs(stateAfterLife.cash))} on credit to survive the month.`)
+      notes.push(`You had to float ${money(Math.abs(stateAfterLife.cash))} on credit to survive the week.`)
       stateAfterLife.cash = 0
       stateAfterLife.stress = clamp(stateAfterLife.stress + 8, 0, 100)
     }
 
     Object.assign(stateAfterLife, syncDebtState(stateAfterLife))
-    stateAfterLife.opportunities = generateOpportunities(stateAfterLife)
+    if (isMonthEnd) stateAfterLife.opportunities = generateOpportunities(stateAfterLife)
 
     if (lifeEvent) notes.push(`Life event: ${lifeEvent.title}.`)
 
-    const snapshot: MonthlySnapshot = {
-      month: stateAfterLife.month,
-      cash: stateAfterLife.cash,
-      savingsBalance: stateAfterLife.savingsBalance,
-      debt: stateAfterLife.debt,
-      netWorth: getNetWorth(stateAfterLife),
-      salary,
-      rentalIncome,
-      businessIncome,
-      dividends: Math.round(dividends),
-      bondIncome: Math.round(bondIncome),
-      savingsInterest,
-      maintenance,
-      livingCost,
-      interest,
-      debtService,
-      taxesAccrued: monthlyTaxAccrual,
-      passiveIncome: getPassiveIncomePreview(stateAfterLife),
+    if (isMonthEnd) {
+      const snapshot: MonthlySnapshot = {
+        month: stateAfterLife.month,
+        cash: stateAfterLife.cash,
+        savingsBalance: stateAfterLife.savingsBalance,
+        debt: stateAfterLife.debt,
+        netWorth: getNetWorth(stateAfterLife),
+        salary: salary * WEEKS_PER_MONTH,
+        rentalIncome: rentalIncome * WEEKS_PER_MONTH,
+        businessIncome: businessIncome * WEEKS_PER_MONTH,
+        dividends: Math.round(dividends * WEEKS_PER_MONTH),
+        bondIncome: Math.round(bondIncome * WEEKS_PER_MONTH),
+        savingsInterest: savingsInterest * WEEKS_PER_MONTH,
+        maintenance: maintenance * WEEKS_PER_MONTH,
+        livingCost: livingCost * WEEKS_PER_MONTH,
+        interest: interest * WEEKS_PER_MONTH,
+        debtService: debtService * WEEKS_PER_MONTH,
+        taxesAccrued: monthlyTaxAccrual * WEEKS_PER_MONTH,
+        passiveIncome: getPassiveIncomePreview(stateAfterLife),
+      }
+      stateAfterLife.history = [...stateAfterLife.history, snapshot].slice(-24)
     }
-    stateAfterLife.history = [...stateAfterLife.history, snapshot].slice(-24)
 
-    return pushLog(stateAfterLife, event.title, notes.join(' '), salary + rentalIncome + businessIncome + dividends + bondIncome + savingsInterest - maintenance - livingCost - debtService >= 0 ? 'good' : 'bad')
+    return pushLog(stateAfterLife, isMonthEnd ? event.title : `Week ${state.week} closed`, notes.join(' '), salary + rentalIncome + businessIncome + dividends + bondIncome + savingsInterest - maintenance - livingCost - debtService >= 0 ? 'good' : 'bad')
   }
 
   return state

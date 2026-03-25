@@ -15,11 +15,19 @@ export function hydrateState(fallback: GameState) {
     return {
       ...fallback,
       ...parsed,
+      week: parsed.week ?? fallback.week,
+      weekOfMonth: parsed.weekOfMonth ?? fallback.weekOfMonth,
       ageMonths: parsed.ageMonths ?? fallback.ageMonths,
       market: parsed.market?.length === BASE_MARKET.length ? parsed.market : fallback.market,
       certifications: parsed.certifications ?? fallback.certifications,
       upgrades: parsed.upgrades ?? fallback.upgrades,
       holdings: parsed.holdings ?? fallback.holdings,
+      watchlist: parsed.watchlist ?? fallback.watchlist,
+      marketNews:
+        parsed.marketNews?.map((item) => ({
+          ...item,
+          week: item.week ?? fallback.week,
+        })) ?? fallback.marketNews,
       bondHoldings: parsed.bondHoldings ?? fallback.bondHoldings,
       debtAccounts:
         parsed.debtAccounts?.map((account) => ({
@@ -51,7 +59,13 @@ export function hydrateState(fallback: GameState) {
           monthsOperating: business.monthsOperating ?? 0,
         })) ?? fallback.businesses,
       history: parsed.history ?? fallback.history,
-      log: parsed.log?.length ? parsed.log : fallback.log,
+      log:
+        parsed.log?.length
+          ? parsed.log.map((entry) => ({
+              ...entry,
+              week: entry.week ?? fallback.week,
+            }))
+          : fallback.log,
       nextBusinessId: parsed.nextBusinessId ?? fallback.nextBusinessId,
       nextBondId: parsed.nextBondId ?? fallback.nextBondId,
       nextDebtId: parsed.nextDebtId ?? fallback.nextDebtId,
@@ -76,6 +90,11 @@ export function hydrateState(fallback: GameState) {
       transportTier: parsed.transportTier ?? fallback.transportTier,
       foodTier: parsed.foodTier ?? fallback.foodTier,
       wellnessTier: parsed.wellnessTier ?? fallback.wellnessTier,
+      sideJobIds:
+        parsed.sideJobIds ??
+        ((parsed as Partial<GameState> & { sideJobId?: string | null }).sideJobId
+          ? [(parsed as Partial<GameState> & { sideJobId?: string | null }).sideJobId as string]
+          : fallback.sideJobIds ?? []),
       educationEnrollment: parsed.educationEnrollment ?? fallback.educationEnrollment,
     }
   } catch {

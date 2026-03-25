@@ -1,11 +1,23 @@
 import { money } from '../../game/core/format'
-import { canRunGig, canTakeJob, getLockedReason, hasUpgrade } from '../../game/core/utils'
+import { canRunGig, canTakeJob, canTakeSideJob, getLockedReason, hasUpgrade, toWeeklyAmount } from '../../game/core/utils'
 import type { GameAction, GameState } from '../../game/core/types'
-import { COURSES, COURSE_MAP, GIGS, JOBS, UPGRADES } from './data'
+import { COURSES, COURSE_MAP, GIGS, JOBS, SIDE_JOBS, UPGRADES } from './data'
 
 type Props = {
   state: GameState
   dispatch: React.Dispatch<GameAction>
+}
+
+function getSideJobReason(state: GameState, sideJob: typeof SIDE_JOBS[number]) {
+  const baseReason = getLockedReason(sideJob.reputationRequired, sideJob.certifications, state)
+  if (baseReason) return baseReason
+  if (sideJob.bankAccountRequired && !state.bankAccount) return 'Need a bank account'
+  if (sideJob.seasonMonths && !sideJob.seasonMonths.includes(((state.month - 1) % 12) + 1)) return 'Out of season'
+  const conflicting = state.sideJobIds
+    .map((id) => SIDE_JOBS.find((job) => job.id === id))
+    .find((job) => job && job.schedule === sideJob.schedule)
+  if (conflicting) return `Conflicts with ${conflicting.title}`
+  return undefined
 }
 
 export function CareerPanel({ state, dispatch }: Props) {
@@ -14,9 +26,9 @@ export function CareerPanel({ state, dispatch }: Props) {
       <div className="panel-header">
         <div>
           <span className="panel-kicker">Career</span>
-          <h2>Jobs and side hustles</h2>
+          <h2>Jobs, commitments, and study</h2>
         </div>
-        <p>You start at the very bottom. The early jobs are ugly, but they are how you claw enough stability to exploit bigger systems later.</p>
+        <p>Your main job is only one lane. Weekly commitments now have schedules, seasonality, and internships, so two runs can diverge even with similar money.</p>
       </div>
 
       <div className="card-grid">
@@ -27,10 +39,11 @@ export function CareerPanel({ state, dispatch }: Props) {
             <article className={`card ${isCurrent ? 'current' : ''}`} key={job.id}>
               <div className="card-topline">
                 <h3>{job.title}</h3>
-                <span>{money(job.salary)}/mo</span>
+                <span>{money(toWeeklyAmount(job.salary))}/wk</span>
               </div>
               <p>{job.description}</p>
               <div className="tag-row">
+                <span className="tag">Base {money(job.salary)}/mo</span>
                 <span className="tag">Rep {job.reputationRequired}+</span>
                 {job.certifications.map((certificationId) => (
                   <span className="tag" key={certificationId}>
@@ -48,10 +61,57 @@ export function CareerPanel({ state, dispatch }: Props) {
 
       <div className="panel-header subhead">
         <div>
-          <span className="panel-kicker">Cashflow</span>
-          <h2>Side gigs</h2>
+          <span className="panel-kicker">Weekly Commitments</span>
+          <h2>Side jobs, internships, and seasonal work</h2>
         </div>
-        <p>Each gig costs 1 action point and now drains real energy, so overworking has consequences.</p>
+        <p>You can stack compatible commitments, but schedule conflicts and workload still matter. Daytime internships and weekend seasonals should not feel interchangeable.</p>
+      </div>
+
+      <div className="card-grid">
+        {SIDE_JOBS.map((sideJob) => {
+          const lockedReason = getSideJobReason(state, sideJob)
+          const isCurrent = state.sideJobIds.includes(sideJob.id)
+          const seasonLabel = sideJob.seasonMonths?.join(', ')
+          return (
+            <article className={`card ${isCurrent ? 'current' : ''}`} key={sideJob.id}>
+              <div className="card-topline">
+                <h3>{sideJob.title}</h3>
+                <span>{money(sideJob.weeklyPay)}/wk</span>
+              </div>
+              <p>{sideJob.description}</p>
+              <div className="tag-row">
+                <span className="tag">{sideJob.category}</span>
+                <span className="tag">{sideJob.schedule}</span>
+                <span className="tag">{sideJob.commitment}</span>
+                <span className="tag">Stress +{sideJob.weeklyStress}</span>
+                <span className="tag">Energy -{sideJob.weeklyEnergy}</span>
+                {sideJob.knowledgeGain ? <span className="tag">Knowledge +{sideJob.knowledgeGain}</span> : null}
+                {seasonLabel ? <span className="tag">Season {seasonLabel}</span> : null}
+                {sideJob.certifications.map((certificationId) => (
+                  <span className="tag" key={certificationId}>
+                    {COURSE_MAP[certificationId].title}
+                  </span>
+                ))}
+              </div>
+              <div className="action-row">
+                <button className="mini-button" disabled={!canTakeSideJob(state, sideJob)} onClick={() => dispatch({ type: 'TAKE_SIDE_JOB', sideJobId: sideJob.id })} title={lockedReason}>
+                  {isCurrent ? 'Active' : 'Add Commitment'}
+                </button>
+                <button className="mini-button ghost" disabled={!isCurrent} onClick={() => dispatch({ type: 'DROP_SIDE_JOB', sideJobId: sideJob.id })}>
+                  Drop
+                </button>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+
+      <div className="panel-header subhead">
+        <div>
+          <span className="panel-kicker">Flexible Cash</span>
+          <h2>One-off gigs</h2>
+        </div>
+        <p>Gigs are still the burst option. They are useful inside a tight week, but recurring commitments are now the steadier lane.</p>
       </div>
 
       <div className="card-grid">
@@ -82,7 +142,7 @@ export function CareerPanel({ state, dispatch }: Props) {
           <span className="panel-kicker">Progression</span>
           <h2>Courses and upgrades</h2>
         </div>
-        <p>Courses also cost stamina now, so qualification runs compete with hustle time.</p>
+        <p>Courses still cost stamina, so qualification runs compete directly with work commitments and recovery.</p>
       </div>
 
       <div className="dual-grid">

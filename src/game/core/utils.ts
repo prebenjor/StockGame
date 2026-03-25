@@ -1,10 +1,12 @@
 import { BOND_MAP } from '../../features/banking/data'
-import { COURSE_MAP } from '../../features/career/data'
+import { COURSE_MAP, SIDE_JOB_MAP } from '../../features/career/data'
 import { BUSINESS_MAP } from '../../features/business/data'
 import { FOOD_OPTION_MAP, HOUSING_OPTION_MAP, TRANSPORT_OPTION_MAP, WELLNESS_OPTION_MAP } from '../../features/lifestyle/data'
 import { PROPERTY_MAP, TENANT_PROFILE_MAP } from '../../features/property/data'
 import { DISTRICT_MAP } from '../../features/world/data'
-import type { BondHolding, BondTemplate, BusinessTemplate, GameState, Gig, Job, LifestyleCategory, MonthlyEvent, OwnedBusiness, OwnedProperty, PropertyTemplate } from './types'
+import type { BondHolding, BondTemplate, BusinessTemplate, GameState, Gig, Job, LifestyleCategory, MonthlyEvent, OwnedBusiness, OwnedProperty, PropertyTemplate, SideJob } from './types'
+
+export const WEEKS_PER_MONTH = 4
 
 export function roundPrice(value: number) {
   return Number(value.toFixed(2))
@@ -92,6 +94,10 @@ export function getDebtService(state: Pick<GameState, 'debtAccounts'>) {
   )
 }
 
+export function toWeeklyAmount(monthlyAmount: number) {
+  return Math.round(monthlyAmount / WEEKS_PER_MONTH)
+}
+
 export function getCreditCardAccount(state: Pick<GameState, 'debtAccounts'>) {
   return state.debtAccounts.find((account) => account.kind === 'credit-card') ?? null
 }
@@ -131,6 +137,10 @@ export function getLivingCost(state: GameState) {
     WELLNESS_OPTION_MAP[state.wellnessTier].monthlyCost
   const unbankedPenalty = state.bankAccount ? 0 : 35
   return lifestyleBase + unbankedPenalty + inflation + macroInflation - reserveDiscount
+}
+
+export function getWeeklyLivingCost(state: GameState) {
+  return toWeeklyAmount(getLivingCost(state))
 }
 
 export function getLifestyleSwitchCost(
@@ -338,6 +348,10 @@ export function getPassiveIncomePreview(state: GameState) {
   return Math.round(rentIncome + dividends + bondIncome + savingsIncome + businessIncome)
 }
 
+export function getWeeklyPassiveIncomePreview(state: GameState) {
+  return toWeeklyAmount(getPassiveIncomePreview(state))
+}
+
 export function getMonthlyTaxEstimate(
   state: GameState,
   monthlyIncome = getPassiveIncomePreview(state),
@@ -345,6 +359,14 @@ export function getMonthlyTaxEstimate(
 ) {
   const taxableBase = Math.max(0, monthlyIncome + monthlySalary - Math.round(state.debt * getInterestRate(state) * 0.35))
   return Math.round(taxableBase * getTaxRate(state))
+}
+
+export function getWeeklyTaxEstimate(
+  state: GameState,
+  weeklyIncome = getWeeklyPassiveIncomePreview(state),
+  weeklySalary = 0,
+) {
+  return toWeeklyAmount(getMonthlyTaxEstimate(state, weeklyIncome * WEEKS_PER_MONTH, weeklySalary * WEEKS_PER_MONTH))
 }
 
 export function getLockedReason(
@@ -372,6 +394,20 @@ export function canTakeJob(state: GameState, job: Job) {
 
 export function canRunGig(state: GameState, gig: Gig) {
   return !getLockedReason(gig.reputationRequired, gig.certifications, state, gig.needsProperty) && state.actionPoints > 0
+}
+
+export function canTakeSideJob(state: GameState, sideJob: SideJob) {
+  if (getLockedReason(sideJob.reputationRequired, sideJob.certifications, state)) return false
+  if (sideJob.bankAccountRequired && !state.bankAccount) return false
+  if (sideJob.seasonMonths && !sideJob.seasonMonths.includes(((state.month - 1) % 12) + 1)) return false
+  if (state.sideJobIds.includes(sideJob.id)) return false
+  const activeJobs = state.sideJobIds.map((id) => SIDE_JOB_MAP[id]).filter(Boolean)
+  if (activeJobs.some((activeJob) => activeJob.schedule === sideJob.schedule)) return false
+  const totalCommitment =
+    activeJobs.reduce((sum, activeJob) => sum + (activeJob.commitment === 'heavy' ? 3 : activeJob.commitment === 'medium' ? 2 : 1), 0) +
+    (sideJob.commitment === 'heavy' ? 3 : sideJob.commitment === 'medium' ? 2 : 1)
+  const maxCommitment = state.educationEnrollment ? 3 : 4
+  return totalCommitment <= maxCommitment
 }
 
 export function canBuyProperty(_state: GameState, property: PropertyTemplate) {
