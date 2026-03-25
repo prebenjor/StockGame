@@ -44,7 +44,7 @@ export type WellnessTier = 'none' | 'stretch' | 'gym' | 'therapy'
 
 export type LifestyleCategory = 'housing' | 'transport' | 'food' | 'wellness'
 
-export type DebtKind = 'survival' | 'microloan' | 'mortgage' | 'tax' | 'overdraft' | 'student'
+export type DebtKind = 'survival' | 'microloan' | 'mortgage' | 'tax' | 'overdraft' | 'student' | 'credit-card' | 'business-loan'
 
 export type PropertyTemplate = {
   id: string
@@ -181,6 +181,8 @@ export type DebtAccount = {
   minimumPayment: number
   delinquentMonths: number
   deferMonthsRemaining?: number
+  creditLimit?: number
+  linkedBusinessUid?: string | null
   securedPropertyUid?: string | null
 }
 
@@ -373,9 +375,11 @@ export type GameAction =
   | { type: 'TAKE_JOB'; jobId: string }
   | { type: 'RUN_GIG'; gigId: string }
   | { type: 'OPEN_BANK_ACCOUNT' }
+  | { type: 'OPEN_CREDIT_CARD' }
   | { type: 'SET_LIFESTYLE'; category: LifestyleCategory; tier: HousingTier | TransportTier | FoodTier | WellnessTier }
   | { type: 'DEPOSIT_SAVINGS'; amount: number }
   | { type: 'WITHDRAW_SAVINGS'; amount: number }
+  | { type: 'CHARGE_CREDIT_CARD'; amount: number }
   | { type: 'BUY_BOND'; bondId: string; amount: number }
   | { type: 'SELL_BOND'; bondUid: string }
   | { type: 'ENROLL_EDUCATION'; programId: string; financing: 'cash' | 'student-loan' }
@@ -383,6 +387,7 @@ export type GameAction =
   | { type: 'BUY_UPGRADE'; upgradeId: string }
   | { type: 'BUY_PROPERTY'; listingId: string; financing: 'cash' | 'mortgage' }
   | { type: 'BUY_BUSINESS'; templateId: string; districtId: string }
+  | { type: 'TAKE_BUSINESS_LOAN'; businessUid: string }
   | { type: 'CLAIM_OPPORTUNITY'; opportunityId: string }
   | { type: 'TOGGLE_RENTAL'; propertyUid: string }
   | { type: 'EVICT_TENANT'; propertyUid: string }

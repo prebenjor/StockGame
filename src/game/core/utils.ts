@@ -83,7 +83,27 @@ export function getDebtTotal(state: Pick<GameState, 'debtAccounts'>) {
 }
 
 export function getDebtService(state: Pick<GameState, 'debtAccounts'>) {
-  return Math.round(state.debtAccounts.reduce((total, account) => total + account.minimumPayment, 0))
+  return Math.round(
+    state.debtAccounts.reduce((total, account) => {
+      if ((account.deferMonthsRemaining ?? 0) > 0) return total
+      if (account.kind === 'credit-card' && account.principal <= 0) return total
+      return total + account.minimumPayment
+    }, 0),
+  )
+}
+
+export function getCreditCardAccount(state: Pick<GameState, 'debtAccounts'>) {
+  return state.debtAccounts.find((account) => account.kind === 'credit-card') ?? null
+}
+
+export function getCreditUtilization(state: Pick<GameState, 'debtAccounts'>) {
+  const account = getCreditCardAccount(state)
+  if (!account?.creditLimit) return 0
+  return clamp(account.principal / account.creditLimit, 0, 1.5)
+}
+
+export function canOpenCreditCard(state: GameState) {
+  return state.bankAccount && !getCreditCardAccount(state) && state.creditScore >= 560 && state.bankTrust >= 14
 }
 
 export function getTaxRate(state: GameState) {
@@ -245,6 +265,20 @@ export function getPropertyValue(property: OwnedProperty, state: GameState) {
 
 export function canBuyBusiness(_state: GameState, business: BusinessTemplate) {
   return business.cost > 0
+}
+
+export function getBusinessDebtBalance(state: Pick<GameState, 'debtAccounts'>, businessUid: string) {
+  return Math.round(
+    state.debtAccounts
+      .filter((account) => account.kind === 'business-loan' && account.linkedBusinessUid === businessUid)
+      .reduce((total, account) => total + account.principal, 0),
+  )
+}
+
+export function canTakeBusinessLoan(state: GameState, business: OwnedBusiness) {
+  if (!state.bankAccount || state.actionPoints <= 0 || state.creditScore < 520 || state.bankTrust < 12) return false
+  if (getBusinessDebtBalance(state, business.uid) > 0) return false
+  return business.condition >= 45 && business.monthsOperating >= 1
 }
 
 export function getBusinessMonthlyProfit(business: OwnedBusiness, state: GameState) {

@@ -1,7 +1,7 @@
 import { JOBS } from '../../features/career/data'
 import { CONTACT_MAP } from '../../features/world/data'
 import type { GameState } from './types'
-import { getComplianceRisk, getDebtService, getLivingCost, getNetWorth, getPassiveIncomePreview, hasCertification, hasStableHousing, hasUpgrade } from './utils'
+import { canOpenCreditCard, getComplianceRisk, getCreditUtilization, getDebtService, getLivingCost, getNetWorth, getPassiveIncomePreview, hasCertification, hasStableHousing, hasUpgrade } from './utils'
 
 export function getCurrentJob(state: GameState) {
   return JOBS.find((job) => job.id === state.jobId) ?? JOBS[0]
@@ -39,6 +39,8 @@ export function getTips(state: GameState) {
   if (!state.bankAccount) tips.push('Open a bank account early. The whole game stays possible without it, but fees and loan terms are much worse.')
   if (!state.educationEnrollment && state.bankAccount && state.reputation >= 1 && state.knowledge < 4) tips.push('Education is now a real long-term system. A slower financed program can be cheaper than brute-forcing every credential in cash.')
   if (state.educationEnrollment) tips.push('An education program is active. It will cut into runway for a few months, but it compounds job access and knowledge once completed.')
+  if (canOpenCreditCard(state)) tips.push('Your bank profile is finally good enough for a starter credit card. Use it as a buffer, not as permanent income.')
+  if (getCreditUtilization(state) >= 0.6) tips.push('Credit-card utilization is elevated. Pay it down before your score and future loan terms get worse.')
   if (!hasStableHousing(state)) tips.push('Stable housing is not a hard gate, but shelter-level living is burning energy and job income every month.')
   if (state.transportTier === 'foot') tips.push('A bike or scooter upgrade is not cosmetic. Early transport reliability directly protects income and energy.')
   if (state.foodTier === 'skip-meals') tips.push('Skipped meals are cheap, but they now feed directly into harsher early-life event rolls and lower recovery.')
@@ -53,6 +55,7 @@ export function getTips(state: GameState) {
   if (state.baseRate >= 5.8) tips.push('Rates are tight. Equity-heavy growth is safer than leaning on fresh debt right now.')
   if (state.housingDemand >= 6) tips.push('Housing demand is hot. A renovated rental can compound faster than another speculative trade.')
   if (state.businesses.length === 0 && state.cash > 12000 && state.reputation >= 6) tips.push('You now have the profile to open a real business. It is the next best diversification step after your first steady assets.')
+  if (state.businesses.some((business) => business.monthsOperating >= 1) && !state.debtAccounts.some((account) => account.kind === 'business-loan')) tips.push('A seasoned business can now support its own loan. That is better leverage than funding every expansion from personal cash.')
   if (state.businesses.some((business) => business.active && business.condition < 45)) tips.push('One of your businesses is deteriorating. Maintenance is cheaper than a long operational slump.')
   if (state.properties.some((property) => property.rented && property.missedPayments > 0)) tips.push('One of your tenants is already missing rent. Reset that unit before arrears cascade into repairs and vacancy.')
   if (!hasUpgrade(state, 'tenant-crm') && state.properties.length > 0) tips.push('Tenant CRM is one of the best upgrades once you have rent coming in.')

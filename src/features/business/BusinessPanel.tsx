@@ -2,7 +2,7 @@ import { DISTRICT_MAP } from '../world/data'
 import { money } from '../../game/core/format'
 import type { GameAction, GameState } from '../../game/core/types'
 import { BUSINESSES } from './data'
-import { canBuyBusiness, getBusinessMonthlyProfit, getBusinessValue } from '../../game/core/utils'
+import { canBuyBusiness, canTakeBusinessLoan, getBusinessDebtBalance, getBusinessMonthlyProfit, getBusinessValue } from '../../game/core/utils'
 
 type Props = {
   state: GameState
@@ -80,6 +80,7 @@ export function BusinessPanel({ state, dispatch }: Props) {
           state.businesses.map((business) => {
             const template = BUSINESSES.find((item) => item.id === business.templateId) ?? BUSINESSES[0]
             const district = DISTRICT_MAP[business.districtId]
+            const businessDebt = getBusinessDebtBalance(state, business.uid)
             return (
               <article className="card owned-card" key={business.uid}>
                 {template.imageUrl ? (
@@ -104,10 +105,14 @@ export function BusinessPanel({ state, dispatch }: Props) {
                   <span className="tag">Marketing {business.marketing}</span>
                   <span className="tag">Staffing {business.staffing}</span>
                   <span className="tag">Age {business.monthsOperating} mo</span>
+                  {businessDebt > 0 ? <span className="tag accent">Debt {money(businessDebt)}</span> : null}
                 </div>
                 <div className="action-row">
                   <button className="mini-button" onClick={() => dispatch({ type: 'TOGGLE_BUSINESS', businessUid: business.uid })}>
                     {business.active ? 'Pause Ops' : 'Resume Ops'}
+                  </button>
+                  <button className="mini-button ghost" disabled={!canTakeBusinessLoan(state, business)} onClick={() => dispatch({ type: 'TAKE_BUSINESS_LOAN', businessUid: business.uid })}>
+                    Business Loan
                   </button>
                   <button className="mini-button ghost" disabled={state.actionPoints <= 0 || state.cash < 320 || business.marketing >= 5} onClick={() => dispatch({ type: 'INVEST_IN_BUSINESS', businessUid: business.uid, focus: 'marketing' })}>
                     Marketing

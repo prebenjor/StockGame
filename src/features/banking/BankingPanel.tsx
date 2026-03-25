@@ -1,6 +1,6 @@
 import { BONDS, BOND_MAP } from './data'
 import { money } from '../../game/core/format'
-import { getBondValue, getBondYield, getDebtService, getSavingsRate } from '../../game/core/utils'
+import { canOpenCreditCard, getBondValue, getBondYield, getCreditCardAccount, getCreditUtilization, getDebtService, getSavingsRate } from '../../game/core/utils'
 import type { GameAction, GameState } from '../../game/core/types'
 
 type Props = {
@@ -10,6 +10,9 @@ type Props = {
 
 export function BankingPanel({ state, dispatch }: Props) {
   const debtService = getDebtService(state)
+  const creditCard = getCreditCardAccount(state)
+  const creditUtilization = getCreditUtilization(state)
+  const availableCredit = creditCard?.creditLimit ? Math.max(0, creditCard.creditLimit - creditCard.principal) : 0
 
   return (
     <section className="panel">
@@ -32,6 +35,8 @@ export function BankingPanel({ state, dispatch }: Props) {
             <div><span>Savings</span><strong>{money(state.savingsBalance)}</strong></div>
             <div><span>Savings yield</span><strong>{(getSavingsRate(state) * 100).toFixed(1)}%</strong></div>
             <div><span>Debt service</span><strong>{money(debtService)}</strong></div>
+            <div><span>Credit line</span><strong>{creditCard?.creditLimit ? money(creditCard.creditLimit) : 'None'}</strong></div>
+            <div><span>Utilization</span><strong>{creditCard ? `${(creditUtilization * 100).toFixed(0)}%` : 'N/A'}</strong></div>
           </div>
           <div className="action-row">
             <button className="mini-button" disabled={!state.bankAccount || state.cash < 250} onClick={() => dispatch({ type: 'DEPOSIT_SAVINGS', amount: 250 })}>
@@ -45,6 +50,17 @@ export function BankingPanel({ state, dispatch }: Props) {
             </button>
             <button className="mini-button ghost" disabled={!state.bankAccount || state.savingsBalance < 1000} onClick={() => dispatch({ type: 'WITHDRAW_SAVINGS', amount: 1000 })}>
               Withdraw $1,000
+            </button>
+          </div>
+          <div className="action-row">
+            <button className="mini-button" disabled={!canOpenCreditCard(state)} onClick={() => dispatch({ type: 'OPEN_CREDIT_CARD' })}>
+              {creditCard ? 'Card Open' : 'Open Starter Card'}
+            </button>
+            <button className="mini-button ghost" disabled={!creditCard || availableCredit < 250} onClick={() => dispatch({ type: 'CHARGE_CREDIT_CARD', amount: 250 })}>
+              Charge $250
+            </button>
+            <button className="mini-button ghost" disabled={!creditCard || availableCredit < 750} onClick={() => dispatch({ type: 'CHARGE_CREDIT_CARD', amount: 750 })}>
+              Charge $750
             </button>
           </div>
         </article>
@@ -68,7 +84,9 @@ export function BankingPanel({ state, dispatch }: Props) {
                     <span className="tag">{account.kind}</span>
                     <span className="tag">{(account.monthlyRate * 100).toFixed(1)}%</span>
                     <span className="tag">Min {money(account.minimumPayment)}</span>
-                    {(account.deferMonthsRemaining ?? 0) > 0 ? <span className="tag">Deferred {account.deferMonthsRemaining} mo</span> : null}
+                    {account.creditLimit ? <span className="tag">Limit {money(account.creditLimit)}</span> : null}
+                    {(account.deferMonthsRemaining ?? 0) > 0 ? <span className="tag">{account.kind === 'student' ? 'Grace' : 'Deferred'} {account.deferMonthsRemaining} mo</span> : null}
+                    {account.linkedBusinessUid ? <span className="tag">Business note</span> : null}
                     {account.delinquentMonths > 0 ? <span className="tag accent">Late {account.delinquentMonths}</span> : null}
                   </div>
                 </div>

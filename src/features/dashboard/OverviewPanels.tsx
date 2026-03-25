@@ -1,7 +1,7 @@
 import { FOOD_OPTION_MAP, HOUSING_OPTION_MAP, TRANSPORT_OPTION_MAP, WELLNESS_OPTION_MAP } from '../../features/lifestyle/data'
 import { money } from '../../game/core/format'
 import { getConditionTone, getCurrentJob, getMilestones, getTips } from '../../game/core/selectors'
-import { getComplianceRisk, getDebtService, getInterestRate, getLivingCost, getMonthlyTaxEstimate, getNetWorth, getPassiveIncomePreview, getRenovationCost, getSavingsRate, getTaxRate, getTradingFee, hasStableHousing } from '../../game/core/utils'
+import { getComplianceRisk, getCreditCardAccount, getCreditUtilization, getDebtService, getInterestRate, getLivingCost, getMonthlyTaxEstimate, getNetWorth, getPassiveIncomePreview, getRenovationCost, getSavingsRate, getTaxRate, getTradingFee, hasStableHousing } from '../../game/core/utils'
 import type { GameAction, GameState, Job } from '../../game/core/types'
 
 type SummaryProps = {
@@ -58,6 +58,8 @@ export function SidePanel({ state, dispatch }: SideProps) {
   const interestPreview = Math.round(state.debt * getInterestRate(state))
   const debtService = getDebtService(state)
   const taxPreview = getMonthlyTaxEstimate(state, getPassiveIncomePreview(state), getCurrentJob(state).salary)
+  const creditCard = getCreditCardAccount(state)
+  const studentDebt = state.debtAccounts.find((account) => account.kind === 'student') ?? null
   const milestones = getMilestones(state)
   const tips = getTips(state)
   const housingLabel = HOUSING_OPTION_MAP[state.housingTier].title
@@ -107,8 +109,10 @@ export function SidePanel({ state, dispatch }: SideProps) {
         <div><span>Savings yield</span><strong>{(getSavingsRate(state) * 100).toFixed(1)}%</strong></div>
         <div><span>Base rate</span><strong>{state.baseRate.toFixed(1)}%</strong></div>
         <div><span>Credit score</span><strong>{state.creditScore}</strong></div>
+        <div><span>Card utilization</span><strong>{creditCard ? `${(getCreditUtilization(state) * 100).toFixed(0)}%` : 'N/A'}</strong></div>
         <div><span>Knowledge</span><strong>{state.knowledge}</strong></div>
         <div><span>Bank trust</span><strong>{state.bankTrust}</strong></div>
+        <div><span>Student grace</span><strong>{studentDebt && (studentDebt.deferMonthsRemaining ?? 0) > 0 ? `${studentDebt.deferMonthsRemaining} mo` : 'None'}</strong></div>
         <div><span>Active education</span><strong>{state.educationEnrollment ? 'Yes' : 'No'}</strong></div>
         <div><span>Bank account</span><strong>{state.bankAccount ? 'Open' : 'No'}</strong></div>
         <div><span>Trading fee</span><strong>{money(getTradingFee(state))}</strong></div>

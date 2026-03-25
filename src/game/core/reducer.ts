@@ -8,7 +8,7 @@ import { CONTACTS, DISTRICTS, DISTRICT_MAP, FOOD_SURVIVAL_EVENTS, HOUSING_SURVIV
 import { money } from './format'
 import { hydrateState } from './storage'
 import type { ContactState, Course, DebtAccount, GameAction, GameState, LifeEvent, MonthlySnapshot, Opportunity, Tone } from './types'
-import { canBuyBusiness, canBuyProperty, canRunGig, canTakeJob, clamp, getBondValue, getBondYield, getBusinessMonthlyProfit, getBusinessValue, getComplianceRisk, getDebtTotal, getInterestRate, getLifestyleConditionShift, getLifestyleSwitchCost, getLivingCost, getLockedReason, getMonthlyTaxEstimate, getNetWorth, getPassiveIncomePreview, getPropertyAskingPrice, getPropertyRent, getPropertyUpkeep, getPropertyValue, getRenovationBoost, getRenovationCost, getSavingsRate, getTradingFee, hasStableHousing, hasUpgrade, randomBetween, randomInt, randomItem, roundPrice } from './utils'
+import { canBuyBusiness, canBuyProperty, canOpenCreditCard, canRunGig, canTakeBusinessLoan, canTakeJob, clamp, getBondValue, getBondYield, getBusinessDebtBalance, getBusinessMonthlyProfit, getBusinessValue, getComplianceRisk, getCreditCardAccount, getCreditUtilization, getDebtTotal, getInterestRate, getLifestyleConditionShift, getLifestyleSwitchCost, getLivingCost, getLockedReason, getMonthlyTaxEstimate, getNetWorth, getPassiveIncomePreview, getPropertyAskingPrice, getPropertyRent, getPropertyUpkeep, getPropertyValue, getRenovationBoost, getRenovationCost, getSavingsRate, getTradingFee, hasStableHousing, hasUpgrade, randomBetween, randomInt, randomItem, roundPrice } from './utils'
 
 function getEconomyPhase(state: Pick<GameState, 'unemployment' | 'housingDemand' | 'marketSentiment' | 'baseRate'>): GameState['economyPhase'] {
   if (state.unemployment >= 7.2 || state.marketSentiment <= -5.5) return 'recession'
@@ -150,6 +150,10 @@ function createDebtAccount(
   }
 }
 
+function shouldKeepDebtAccount(account: DebtAccount) {
+  return account.principal > 0 || account.kind === 'credit-card'
+}
+
 function applyDebtPayment(accounts: DebtAccount[], payment: number) {
   let remaining = payment
   const sorted = accounts
@@ -168,7 +172,7 @@ function applyDebtPayment(accounts: DebtAccount[], payment: number) {
     remaining -= applied
   }
 
-  return updated.filter((account) => account.principal > 0)
+  return updated.filter(shouldKeepDebtAccount)
 }
 
 function generateOpportunities(state: GameState) {
@@ -559,6 +563,36 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     )
   }
 
+  if (action.type === 'OPEN_CREDIT_CARD') {
+    if (!canOpenCreditCard(state)) return state
+    const creditLimit = state.creditScore >= 680 ? 1800 : state.creditScore >= 620 ? 1200 : 700
+    const created = createDebtAccount(state, {
+      kind: 'credit-card',
+      label: 'Starter credit card',
+      principal: 0,
+      monthlyRate: clamp(getInterestRate(state) + 0.012, 0.018, 0.04),
+      minimumPayment: 35,
+      delinquentMonths: 0,
+      creditLimit,
+      linkedBusinessUid: null,
+      securedPropertyUid: null,
+    })
+    return pushLog(
+      applyConditionShift(
+        syncDebtState({
+          ...state,
+          debtAccounts: [...state.debtAccounts, created.account],
+          nextDebtId: created.nextDebtId,
+          bankTrust: clamp(state.bankTrust + 4, 0, 100),
+        }),
+        { stress: -1, reputation: 1 },
+      ),
+      'Starter card approved',
+      `The bank approved a starter card with a ${money(creditLimit)} limit. It can smooth bad months, but high utilization will hammer your score.`,
+      'good',
+    )
+  }
+
   if (action.type === 'SET_LIFESTYLE') {
     const switchCost = getLifestyleSwitchCost(state, action.category, action.tier)
     if (switchCost <= 0 || state.cash < switchCost) return state
@@ -620,6 +654,30 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       'Savings withdrawal',
       `You moved ${money(action.amount)} out of savings.`,
       'neutral',
+    )
+  }
+
+  if (action.type === 'CHARGE_CREDIT_CARD') {
+    const creditCard = getCreditCardAccount(state)
+    if (!creditCard || !creditCard.creditLimit || action.amount <= 0) return state
+    const fee = Math.max(10, Math.round(action.amount * 0.03))
+    if (creditCard.principal + action.amount + fee > creditCard.creditLimit) return state
+    return pushLog(
+      applyConditionShift(
+        syncDebtState({
+          ...state,
+          cash: state.cash + action.amount,
+          debtAccounts: state.debtAccounts.map((account) =>
+            account.uid === creditCard.uid
+              ? { ...account, principal: account.principal + action.amount + fee }
+              : account,
+          ),
+        }),
+        { stress: 1 },
+      ),
+      'Credit line used',
+      `You floated ${money(action.amount)} onto the card and paid ${money(fee)} in fees. The cash is there now, but the balance will compound fast if it sits.`,
+      'bad',
     )
   }
 
@@ -699,7 +757,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       monthlyRate: clamp(getInterestRate(state) - 0.016, 0.006, 0.018),
       minimumPayment: Math.max(40, Math.round(program.totalCost * 0.015)),
       delinquentMonths: 0,
-      deferMonthsRemaining: program.durationMonths,
+      deferMonthsRemaining: program.durationMonths + 2,
+      linkedBusinessUid: null,
       securedPropertyUid: null,
     })
 
@@ -718,7 +777,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         { stress: 3, energy: -4 },
       ),
       'Program started',
-      `You enrolled in ${program.title} using student financing. Payments are deferred while you are still in the program.`,
+      `You enrolled in ${program.title} using student financing. Payments stay deferred during the program and for 2 months after graduation.`,
       'good',
     )
   }
@@ -853,6 +912,46 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       'Business launched',
       `You opened ${template.title} in ${DISTRICT_MAP[action.districtId].name} for ${money(template.cost)}.${reputationGap > 0 ? ' You are ahead of your profile, so this starts rougher than it would for a polished operator.' : ''}`,
       'good',
+    )
+  }
+
+  if (action.type === 'TAKE_BUSINESS_LOAN') {
+    const business = state.businesses.find((item) => item.uid === action.businessUid)
+    if (!business || !canTakeBusinessLoan(state, business)) return state
+
+    const businessValue = getBusinessValue(business, state)
+    const principal = clamp(Math.round(businessValue * 0.45), 1500, 12000)
+    const fee = Math.max(120, Math.round(principal * 0.03))
+    const created = createDebtAccount(state, {
+      kind: 'business-loan',
+      label: `${BUSINESS_MAP[business.templateId].title} growth loan`,
+      principal,
+      monthlyRate: clamp(getInterestRate(state) + (business.monthsOperating < 3 ? 0.008 : 0.005), 0.014, 0.038),
+      minimumPayment: Math.max(120, Math.round(principal * 0.04)),
+      delinquentMonths: 0,
+      linkedBusinessUid: business.uid,
+      securedPropertyUid: null,
+    })
+
+    return pushLog(
+      applyConditionShift(
+        adjustContact(
+          syncDebtState({
+            ...state,
+            actionPoints: state.actionPoints - 1,
+            cash: state.cash + principal - fee,
+            debtAccounts: [...state.debtAccounts, created.account],
+            nextDebtId: created.nextDebtId,
+            bankTrust: clamp(state.bankTrust + 3, 0, 100),
+          }),
+          'banker',
+          4,
+        ),
+        { stress: 5, energy: -3 },
+      ),
+      'Business loan funded',
+      `You borrowed ${money(principal)} against ${BUSINESS_MAP[business.templateId].title} and paid ${money(fee)} in fees. It boosts liquidity now, but the monthly drag is real.`,
+      'neutral',
     )
   }
 
@@ -1001,14 +1100,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     const business = state.businesses.find((item) => item.uid === action.businessUid)
     if (!business) return state
     const saleValue = getBusinessValue(business, state)
+    const linkedDebt = getBusinessDebtBalance(state, business.uid)
+    const linkedAccounts = state.debtAccounts.filter((account) => account.linkedBusinessUid === business.uid)
+    const nonLinkedAccounts = state.debtAccounts.filter((account) => account.linkedBusinessUid !== business.uid)
+    const remainingLinkedAccounts = applyDebtPayment(linkedAccounts, saleValue)
+    const remainingLinkedDebt = Math.round(remainingLinkedAccounts.reduce((total, account) => total + account.principal, 0))
+    const debtAccounts = [...nonLinkedAccounts, ...remainingLinkedAccounts]
+    const netProceeds = Math.max(0, saleValue - linkedDebt)
     return pushLog(
-      {
+      syncDebtState({
         ...state,
-        cash: state.cash + saleValue,
+        cash: state.cash + netProceeds,
+        debtAccounts,
         businesses: state.businesses.filter((item) => item.uid !== action.businessUid),
-      },
+      }),
       'Business sold',
-      `You sold ${BUSINESS_MAP[business.templateId].title} for ${money(saleValue)}.`,
+      `You sold ${BUSINESS_MAP[business.templateId].title} for ${money(saleValue)}.${linkedDebt > 0 ? ` ${money(linkedDebt - remainingLinkedDebt)} went straight to its loan balance.${remainingLinkedDebt > 0 ? ` ${money(remainingLinkedDebt)} still remains on the note.` : ''}` : ''}`,
       'good',
     )
   }
@@ -1554,6 +1661,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     cash -= maintenance
 
     const livingCost = getLivingCost(state)
+    const startingCreditUtilization = getCreditUtilization(state)
     const effectiveDebtRate =
       state.debtAccounts.length > 0 && state.debt > 0
         ? state.debtAccounts.reduce((total, account) => total + account.principal * account.monthlyRate, 0) / state.debt
@@ -1564,15 +1672,21 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         const interestCharge = Math.round(account.principal * account.monthlyRate)
         const principalWithInterest = account.principal + interestCharge
         const inDeferment = (account.deferMonthsRemaining ?? 0) > 0
-        const due = inDeferment ? 0 : Math.min(principalWithInterest, account.minimumPayment)
         const nextAccount = {
           ...account,
           principal: principalWithInterest,
           deferMonthsRemaining: inDeferment ? Math.max(0, (account.deferMonthsRemaining ?? 0) - 1) : account.deferMonthsRemaining,
         }
+        if (account.kind === 'credit-card') {
+          nextAccount.minimumPayment = principalWithInterest <= 0 ? 35 : Math.max(35, Math.round(principalWithInterest * 0.09))
+        }
+        const due = inDeferment ? 0 : Math.min(principalWithInterest, nextAccount.minimumPayment)
         interest += interestCharge
 
         if (due === 0) {
+          if (account.kind === 'student' && inDeferment && (nextAccount.deferMonthsRemaining ?? 0) === 1) {
+            notes.push(`${account.label} is about to leave deferment next month.`)
+          }
           return nextAccount
         }
 
@@ -1594,7 +1708,26 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
         return nextAccount
       })
-      .filter((account) => account.principal > 0)
+      .filter(shouldKeepDebtAccount)
+
+    nextState.businesses = nextState.businesses.map((business) => {
+      const loanBalance = getBusinessDebtBalance(nextState, business.uid)
+      const delinquentLoans = nextState.debtAccounts.filter(
+        (account) => account.kind === 'business-loan' && account.linkedBusinessUid === business.uid && account.delinquentMonths > 0,
+      )
+      if (loanBalance > 0 && business.active) {
+        businessIncome -= Math.round(loanBalance * 0.004)
+      }
+      if (delinquentLoans.length > 0) {
+        businessStress += delinquentLoans.length * 2
+        notes.push(`${BUSINESS_MAP[business.templateId].title} is under lender pressure after a missed business-loan payment.`)
+        return {
+          ...business,
+          condition: clamp(business.condition - delinquentLoans.length * 5, 15, 100),
+        }
+      }
+      return business
+    })
 
     debt = getDebtTotal(nextState)
     const monthlyTaxAccrual = getMonthlyTaxEstimate(nextState, rentalIncome + businessIncome + dividends + bondIncome + savingsInterest, salary)
@@ -1705,6 +1838,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       bankShift -= 2
     }
     if (nextPhase === 'boom') bankShift += 2
+    const endingCreditUtilization = getCreditUtilization(stateAfterLife)
+    if (endingCreditUtilization >= 0.85) {
+      creditShift -= 16
+    } else if (endingCreditUtilization >= 0.6) {
+      creditShift -= 8
+    } else if (startingCreditUtilization > 0 && endingCreditUtilization <= 0.25) {
+      creditShift += 4
+      bankShift += 1
+    }
     stateAfterLife.creditScore = clamp(state.creditScore + creditShift, 300, 850)
     stateAfterLife.bankTrust = clamp(state.bankTrust + bankShift, 0, 100)
 
@@ -1726,6 +1868,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     notes.push(`${DISTRICT_MAP[hottestDistrict.districtId].name} is heating up. ${DISTRICT_MAP[coldestDistrict.districtId].name} is cooling off.`)
     notes.push(`${hottestRival.name} is the loudest rival right now, focused on ${DISTRICT_MAP[hottestRival.focusDistrictId].name}.`)
     notes.push(`Credit is now ${stateAfterLife.creditScore} and bank trust is ${stateAfterLife.bankTrust}.`)
+    if (endingCreditUtilization > 0) notes.push(`Credit-card utilization ended the month at ${(endingCreditUtilization * 100).toFixed(0)}% of your limit.`)
     if (delinquentAccounts > 0) notes.push(`${delinquentAccounts} debt account${delinquentAccounts > 1 ? 's were' : ' was'} delinquent this month.`)
     if (stateAfterLife.opportunities.length > 0) notes.push(`${stateAfterLife.opportunities.length} contact-driven opportunities opened up this month.`)
 

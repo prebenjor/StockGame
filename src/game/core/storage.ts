@@ -21,7 +21,12 @@ export function hydrateState(fallback: GameState) {
       upgrades: parsed.upgrades ?? fallback.upgrades,
       holdings: parsed.holdings ?? fallback.holdings,
       bondHoldings: parsed.bondHoldings ?? fallback.bondHoldings,
-      debtAccounts: parsed.debtAccounts ?? fallback.debtAccounts,
+      debtAccounts:
+        parsed.debtAccounts?.map((account) => ({
+          ...account,
+          creditLimit: account.creditLimit,
+          linkedBusinessUid: account.linkedBusinessUid ?? null,
+        })) ?? fallback.debtAccounts,
       districtStates: parsed.districtStates?.length ? parsed.districtStates : fallback.districtStates,
       propertyListings: parsed.propertyListings?.length ? parsed.propertyListings : fallback.propertyListings,
       contacts: parsed.contacts?.length ? parsed.contacts : fallback.contacts,
