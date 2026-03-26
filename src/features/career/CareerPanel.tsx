@@ -31,6 +31,21 @@ function getSideJobReason(state: GameState, sideJob: typeof SIDE_JOBS[number]) {
 }
 
 export function CareerPanel({ state, dispatch }: Props) {
+  const getCourseReason = (course: typeof COURSES[number]) => {
+    if (state.certifications.includes(course.id)) return 'Already studied'
+    if (state.cash < course.cost) return `Need ${money(course.cost)} cash`
+    if (state.actionPoints <= 0) return 'No actions left this week'
+    if (state.reputation < course.reputationRequired) return `Reach reputation ${course.reputationRequired}`
+    if (state.energy < 12) return 'Need at least 12 energy'
+    return undefined
+  }
+
+  const getUpgradeReason = (upgrade: typeof UPGRADES[number]) => {
+    if (state.upgrades.includes(upgrade.id)) return 'Already owned'
+    if (state.cash < upgrade.cost) return `Need ${money(upgrade.cost)} cash`
+    return undefined
+  }
+
   return (
     <section className="panel">
       <div className="panel-header">
@@ -62,9 +77,16 @@ export function CareerPanel({ state, dispatch }: Props) {
                   </span>
                 ))}
               </div>
-              <button className="mini-button" disabled={!canTakeJob(state, job)} onClick={() => dispatch({ type: 'TAKE_JOB', jobId: job.id })} title={lockedReason ?? undefined}>
-                {isCurrent ? 'Current Job' : 'Take Job'}
-              </button>
+              <div className="action-stack">
+                <div className="action-section">
+                  <button className="mini-button" disabled={!canTakeJob(state, job)} onClick={() => dispatch({ type: 'TAKE_JOB', jobId: job.id })} title={lockedReason ?? undefined}>
+                    {isCurrent ? 'Current Job' : 'Take Job'}
+                  </button>
+                  <p className="action-hint">
+                    {lockedReason ? `Blocked: ${lockedReason}.` : isCurrent ? 'This is already your main income track.' : 'Primary move: switch to this when the weekly pay or route advantage is worth the change.'}
+                  </p>
+                </div>
+              </div>
             </article>
           )
         })}
@@ -105,13 +127,20 @@ export function CareerPanel({ state, dispatch }: Props) {
                   </span>
                 ))}
               </div>
-              <div className="action-row">
-                <button className="mini-button" disabled={!canTakeSideJob(state, sideJob)} onClick={() => dispatch({ type: 'TAKE_SIDE_JOB', sideJobId: sideJob.id })} title={lockedReason}>
-                  {isCurrent ? 'Active' : 'Add Commitment'}
-                </button>
-                <button className="mini-button ghost" disabled={!isCurrent} onClick={() => dispatch({ type: 'DROP_SIDE_JOB', sideJobId: sideJob.id })}>
-                  Drop
-                </button>
+              <div className="action-stack">
+                <div className="action-section">
+                  <div className="action-row">
+                    <button className="mini-button" disabled={!canTakeSideJob(state, sideJob)} onClick={() => dispatch({ type: 'TAKE_SIDE_JOB', sideJobId: sideJob.id })} title={lockedReason}>
+                      {isCurrent ? 'Active' : 'Add Commitment'}
+                    </button>
+                    <button className="mini-button ghost" disabled={!isCurrent} onClick={() => dispatch({ type: 'DROP_SIDE_JOB', sideJobId: sideJob.id })} title={!isCurrent ? 'Not currently active' : undefined}>
+                      Drop
+                    </button>
+                  </div>
+                  <p className="action-hint">
+                    {lockedReason ? `Blocked: ${lockedReason}.` : isCurrent ? 'Secondary move: drop this if your schedule or energy cannot support it.' : 'Primary move: add this only if the schedule fits your current load.'}
+                  </p>
+                </div>
               </div>
             </article>
           )
@@ -142,9 +171,16 @@ export function CareerPanel({ state, dispatch }: Props) {
                 <span className="tag">Rep {gig.reputationRequired}+</span>
                 {bonus ? <span className="tag accent">{bonus.trim()}</span> : null}
               </div>
-              <button className="mini-button" disabled={!canRunGig(state, gig)} onClick={() => dispatch({ type: 'RUN_GIG', gigId: gig.id })} title={lockedReason ?? undefined}>
-                Run Gig
-              </button>
+              <div className="action-stack">
+                <div className="action-section">
+                  <button className="mini-button" disabled={!canRunGig(state, gig)} onClick={() => dispatch({ type: 'RUN_GIG', gigId: gig.id })} title={lockedReason ?? undefined}>
+                    Run Gig
+                  </button>
+                  <p className="action-hint">
+                    {lockedReason ? `Blocked: ${lockedReason}.` : 'Primary move: use gigs for short bursts of cash, not as your whole weekly plan.'}
+                  </p>
+                </div>
+              </div>
             </article>
           )
         })}
@@ -160,7 +196,9 @@ export function CareerPanel({ state, dispatch }: Props) {
 
       <div className="dual-grid">
         <div className="card-grid compact">
-          {COURSES.map((course) => (
+          {COURSES.map((course) => {
+            const reason = getCourseReason(course)
+            return (
             <article className="card" key={course.id}>
               <CardMedia imageUrl={course.imageUrl} imageAlt={course.imageAlt} />
               <div className="card-topline">
@@ -168,15 +206,24 @@ export function CareerPanel({ state, dispatch }: Props) {
                 <span>{money(course.cost)}</span>
               </div>
               <p>{course.description}</p>
-              <button className="mini-button" disabled={state.certifications.includes(course.id) || state.cash < course.cost || state.actionPoints <= 0 || state.reputation < course.reputationRequired || state.energy < 12} onClick={() => dispatch({ type: 'BUY_COURSE', courseId: course.id })}>
-                {state.certifications.includes(course.id) ? 'Owned' : 'Study'}
-              </button>
+              <div className="action-stack">
+                <div className="action-section">
+                  <button className="mini-button" disabled={!!reason} onClick={() => dispatch({ type: 'BUY_COURSE', courseId: course.id })} title={reason}>
+                    {state.certifications.includes(course.id) ? 'Owned' : 'Study'}
+                  </button>
+                  <p className="action-hint">
+                    {reason ? `Blocked: ${reason}.` : 'Primary move: buy earning power when it opens a cleaner route than grinding low-end jobs.'}
+                  </p>
+                </div>
+              </div>
             </article>
-          ))}
+          )})}
         </div>
 
         <div className="card-grid compact">
-          {UPGRADES.map((upgrade) => (
+          {UPGRADES.map((upgrade) => {
+            const reason = getUpgradeReason(upgrade)
+            return (
             <article className="card" key={upgrade.id}>
               <CardMedia imageUrl={upgrade.imageUrl} imageAlt={upgrade.imageAlt} />
               <div className="card-topline">
@@ -184,11 +231,18 @@ export function CareerPanel({ state, dispatch }: Props) {
                 <span>{money(upgrade.cost)}</span>
               </div>
               <p>{upgrade.description}</p>
-              <button className="mini-button" disabled={state.upgrades.includes(upgrade.id) || state.cash < upgrade.cost} onClick={() => dispatch({ type: 'BUY_UPGRADE', upgradeId: upgrade.id })}>
-                {state.upgrades.includes(upgrade.id) ? 'Owned' : 'Buy Upgrade'}
-              </button>
+              <div className="action-stack">
+                <div className="action-section">
+                  <button className="mini-button" disabled={!!reason} onClick={() => dispatch({ type: 'BUY_UPGRADE', upgradeId: upgrade.id })} title={reason}>
+                    {state.upgrades.includes(upgrade.id) ? 'Owned' : 'Buy Upgrade'}
+                  </button>
+                  <p className="action-hint">
+                    {reason ? `Blocked: ${reason}.` : 'Primary move: upgrades are best when they make an existing lane more efficient, not just because cash is available.'}
+                  </p>
+                </div>
+              </div>
             </article>
-          ))}
+          )})}
         </div>
       </div>
     </section>

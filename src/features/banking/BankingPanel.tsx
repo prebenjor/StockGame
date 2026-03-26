@@ -1,6 +1,6 @@
 import { BONDS, BOND_MAP } from './data'
 import { money } from '../../game/core/format'
-import { canOpenCreditCard, getBondValue, getBondYield, getCreditCardAccount, getCreditUtilization, getDebtService, getSavingsRate } from '../../game/core/utils'
+import { getBondValue, getBondYield, getCreditCardAccount, getCreditUtilization, getDebtService, getSavingsRate } from '../../game/core/utils'
 import type { GameAction, GameState } from '../../game/core/types'
 
 type Props = {
@@ -13,6 +13,13 @@ export function BankingPanel({ state, dispatch }: Props) {
   const creditCard = getCreditCardAccount(state)
   const creditUtilization = getCreditUtilization(state)
   const availableCredit = creditCard?.creditLimit ? Math.max(0, creditCard.creditLimit - creditCard.principal) : 0
+  const save250Reason = !state.bankAccount ? 'Open a bank account first' : state.cash < 250 ? 'Need $250 in checking' : undefined
+  const save1000Reason = !state.bankAccount ? 'Open a bank account first' : state.cash < 1000 ? 'Need $1,000 in checking' : undefined
+  const withdraw250Reason = !state.bankAccount ? 'Open a bank account first' : state.savingsBalance < 250 ? 'Need $250 in savings' : undefined
+  const withdraw1000Reason = !state.bankAccount ? 'Open a bank account first' : state.savingsBalance < 1000 ? 'Need $1,000 in savings' : undefined
+  const cardOpenReason = creditCard ? 'Starter card already open' : !state.bankAccount ? 'Open a bank account first' : state.creditScore < 560 ? 'Reach 560 credit score' : state.bankTrust < 14 ? 'Raise bank trust to 14' : undefined
+  const charge250Reason = !creditCard ? 'Open a starter card first' : availableCredit < 250 ? 'Need $250 available credit' : undefined
+  const charge750Reason = !creditCard ? 'Open a starter card first' : availableCredit < 750 ? 'Need $750 available credit' : undefined
 
   return (
     <section className="panel">
@@ -38,30 +45,46 @@ export function BankingPanel({ state, dispatch }: Props) {
             <div><span>Credit line</span><strong>{creditCard?.creditLimit ? money(creditCard.creditLimit) : 'None'}</strong></div>
             <div><span>Utilization</span><strong>{creditCard ? `${(creditUtilization * 100).toFixed(0)}%` : 'N/A'}</strong></div>
           </div>
-          <div className="action-row">
-            <button className="mini-button" disabled={!state.bankAccount || state.cash < 250} onClick={() => dispatch({ type: 'DEPOSIT_SAVINGS', amount: 250 })}>
-              Save $250
-            </button>
-            <button className="mini-button" disabled={!state.bankAccount || state.cash < 1000} onClick={() => dispatch({ type: 'DEPOSIT_SAVINGS', amount: 1000 })}>
-              Save $1,000
-            </button>
-            <button className="mini-button ghost" disabled={!state.bankAccount || state.savingsBalance < 250} onClick={() => dispatch({ type: 'WITHDRAW_SAVINGS', amount: 250 })}>
-              Withdraw $250
-            </button>
-            <button className="mini-button ghost" disabled={!state.bankAccount || state.savingsBalance < 1000} onClick={() => dispatch({ type: 'WITHDRAW_SAVINGS', amount: 1000 })}>
-              Withdraw $1,000
-            </button>
-          </div>
-          <div className="action-row">
-            <button className="mini-button" disabled={!canOpenCreditCard(state)} onClick={() => dispatch({ type: 'OPEN_CREDIT_CARD' })}>
-              {creditCard ? 'Card Open' : 'Open Starter Card'}
-            </button>
-            <button className="mini-button ghost" disabled={!creditCard || availableCredit < 250} onClick={() => dispatch({ type: 'CHARGE_CREDIT_CARD', amount: 250 })}>
-              Charge $250
-            </button>
-            <button className="mini-button ghost" disabled={!creditCard || availableCredit < 750} onClick={() => dispatch({ type: 'CHARGE_CREDIT_CARD', amount: 750 })}>
-              Charge $750
-            </button>
+          <div className="action-stack">
+            <div className="action-section">
+              <span className="action-label">Primary Action</span>
+              <div className="action-row">
+                <button className="mini-button" disabled={!!save250Reason} onClick={() => dispatch({ type: 'DEPOSIT_SAVINGS', amount: 250 })} title={save250Reason}>
+                  Save $250
+                </button>
+                <button className="mini-button" disabled={!!save1000Reason} onClick={() => dispatch({ type: 'DEPOSIT_SAVINGS', amount: 1000 })} title={save1000Reason}>
+                  Save $1,000
+                </button>
+              </div>
+              <p className="action-hint">
+                {save250Reason ? `Blocked: ${save250Reason}.` : 'Primary move: move excess cash into savings once this week is covered.'}
+              </p>
+            </div>
+            <div className="action-section">
+              <span className="action-label">Secondary Actions</span>
+              <div className="action-row">
+                <button className="mini-button ghost" disabled={!!withdraw250Reason} onClick={() => dispatch({ type: 'WITHDRAW_SAVINGS', amount: 250 })} title={withdraw250Reason}>
+                  Withdraw $250
+                </button>
+                <button className="mini-button ghost" disabled={!!withdraw1000Reason} onClick={() => dispatch({ type: 'WITHDRAW_SAVINGS', amount: 1000 })} title={withdraw1000Reason}>
+                  Withdraw $1,000
+                </button>
+                <button className="mini-button" disabled={!!cardOpenReason} onClick={() => dispatch({ type: 'OPEN_CREDIT_CARD' })} title={cardOpenReason}>
+                  {creditCard ? 'Card Open' : 'Open Starter Card'}
+                </button>
+                <button className="mini-button ghost" disabled={!!charge250Reason} onClick={() => dispatch({ type: 'CHARGE_CREDIT_CARD', amount: 250 })} title={charge250Reason}>
+                  Charge $250
+                </button>
+                <button className="mini-button ghost" disabled={!!charge750Reason} onClick={() => dispatch({ type: 'CHARGE_CREDIT_CARD', amount: 750 })} title={charge750Reason}>
+                  Charge $750
+                </button>
+              </div>
+              <p className="action-hint">
+                {cardOpenReason && !creditCard
+                  ? `Card path blocked: ${cardOpenReason}.`
+                  : 'Secondary actions: withdraw if you need liquidity, and use credit only as short-term buffer.'}
+              </p>
+            </div>
           </div>
         </article>
 
@@ -107,6 +130,8 @@ export function BankingPanel({ state, dispatch }: Props) {
       <div className="card-grid">
         {BONDS.map((bond) => {
           const yieldRate = getBondYield(bond, state)
+          const buyMinReason = !state.bankAccount ? 'Open a bank account first' : state.cash < bond.minPurchase ? `Need ${money(bond.minPurchase)} cash` : undefined
+          const buy2Reason = !state.bankAccount ? 'Open a bank account first' : state.cash < bond.minPurchase * 2 ? `Need ${money(bond.minPurchase * 2)} cash` : undefined
           return (
             <article className="card" key={bond.id}>
               <div className="card-topline">
@@ -119,13 +144,21 @@ export function BankingPanel({ state, dispatch }: Props) {
                 <span className="tag">{bond.termMonths} mo</span>
                 <span className="tag">Min {money(bond.minPurchase)}</span>
               </div>
-              <div className="action-row">
-                <button className="mini-button" disabled={!state.bankAccount || state.cash < bond.minPurchase} onClick={() => dispatch({ type: 'BUY_BOND', bondId: bond.id, amount: bond.minPurchase })}>
-                  Buy Min
-                </button>
-                <button className="mini-button ghost" disabled={!state.bankAccount || state.cash < bond.minPurchase * 2} onClick={() => dispatch({ type: 'BUY_BOND', bondId: bond.id, amount: bond.minPurchase * 2 })}>
-                  Buy 2x
-                </button>
+              <div className="action-stack">
+                <div className="action-section">
+                  <span className="action-label">Primary Action</span>
+                  <div className="action-row">
+                    <button className="mini-button" disabled={!!buyMinReason} onClick={() => dispatch({ type: 'BUY_BOND', bondId: bond.id, amount: bond.minPurchase })} title={buyMinReason}>
+                      Buy Min
+                    </button>
+                    <button className="mini-button ghost" disabled={!!buy2Reason} onClick={() => dispatch({ type: 'BUY_BOND', bondId: bond.id, amount: bond.minPurchase * 2 })} title={buy2Reason}>
+                      Buy 2x
+                    </button>
+                  </div>
+                  <p className="action-hint">
+                    {buyMinReason ? `Blocked: ${buyMinReason}.` : 'Primary move: use bonds when you want slower, steadier deployment than stocks.'}
+                  </p>
+                </div>
               </div>
             </article>
           )

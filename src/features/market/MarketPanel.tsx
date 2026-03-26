@@ -112,6 +112,9 @@ export function MarketPanel({ state, dispatch }: Props) {
         {state.market.map((stock) => {
           const holding = state.holdings[stock.symbol]
           const isWatching = state.watchlist.includes(stock.symbol)
+          const buyOneReason = state.cash < stock.price + fee ? `Need ${money(Math.ceil(stock.price + fee))} cash` : undefined
+          const buyFiveReason = state.cash < stock.price * 5 + fee ? `Need ${money(Math.ceil(stock.price * 5 + fee))} cash` : undefined
+          const sellReason = !holding ? 'No shares owned' : undefined
           return (
             <article className="card stock-card" key={stock.symbol}>
               <div className="card-topline">
@@ -135,14 +138,30 @@ export function MarketPanel({ state, dispatch }: Props) {
                 {stock.assetType === 'etf' ? <span className="tag">ER {((stock.expenseRatio ?? 0) * 100).toFixed(2)}%</span> : <span className="tag">Earnings q{(((stock.earningsMonth ?? 1) - 1) % 4) + 1}</span>}
                 {isWatching ? <span className="tag accent">Watching</span> : null}
               </div>
-              <div className="action-row">
-                <button className="mini-button" disabled={state.cash < stock.price + fee} onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 1 })}>Buy 1</button>
-                <button className="mini-button" disabled={state.cash < stock.price * 5 + fee} onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 5 })}>Buy 5</button>
-                <button className="mini-button ghost" disabled={!holding} onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: 1 })}>Sell 1</button>
-                <button className="mini-button ghost" disabled={!holding} onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: holding?.shares ?? 0 })}>Sell All</button>
-                <button className="mini-button ghost" onClick={() => dispatch({ type: 'TOGGLE_WATCHLIST', symbol: stock.symbol })}>
-                  {isWatching ? 'Unwatch' : 'Watch'}
-                </button>
+              <div className="action-stack">
+                <div className="action-section">
+                  <span className="action-label">Primary Action</span>
+                  <div className="action-row">
+                    <button className="mini-button" disabled={!!buyOneReason} onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 1 })} title={buyOneReason}>Buy 1</button>
+                    <button className="mini-button" disabled={!!buyFiveReason} onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 5 })} title={buyFiveReason}>Buy 5</button>
+                    <button className="mini-button ghost" onClick={() => dispatch({ type: 'TOGGLE_WATCHLIST', symbol: stock.symbol })}>
+                      {isWatching ? 'Unwatch' : 'Watch'}
+                    </button>
+                  </div>
+                  <p className="action-hint">
+                    {buyOneReason ? `Blocked: ${buyOneReason}.` : 'Primary move: buy small unless you already know why you want size.'}
+                  </p>
+                </div>
+                <div className="action-section">
+                  <span className="action-label">Secondary Actions</span>
+                  <div className="action-row">
+                    <button className="mini-button ghost" disabled={!!sellReason} onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: 1 })} title={sellReason}>Sell 1</button>
+                    <button className="mini-button ghost" disabled={!!sellReason} onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: holding?.shares ?? 0 })} title={sellReason}>Sell All</button>
+                  </div>
+                  <p className="action-hint">
+                    {sellReason ? `Sell blocked: ${sellReason}.` : 'Secondary move: trim positions when you need liquidity or conviction has changed.'}
+                  </p>
+                </div>
               </div>
             </article>
           )

@@ -23,9 +23,17 @@ export function HeroPanel({ state, currentJob, dispatch }: Props) {
   const housingLabel = HOUSING_OPTION_MAP[state.housingTier].title
   const bankingLabel = state.bankAccount ? 'Banked' : 'Unbanked'
   const sideWorkLabel = currentSideJobs.length > 0 ? currentSideJobs.map((job) => job.title).join(', ') : 'No side work'
+  const weeklyStatus =
+    weeklyRunway >= 0
+      ? `Weekly runway is positive at ${money(weeklyRunway)}.`
+      : `Weekly runway is negative at ${money(weeklyRunway)}.`
 
   return (
     <header className="hero-panel">
+      <p className="sr-only" aria-live="polite">
+        Week {state.week}, month {state.month}, week slot {state.weekOfMonth}. Current job {currentJob.title}. {weeklyStatus} You have {state.actionPoints} actions left. Housing is {housingLabel}. Banking status is {bankingLabel}. Side work status: {sideWorkLabel}.
+      </p>
+
       <div className="hero-copy">
         <span className="eyebrow">Street To Skyline</span>
         <h1>Start from zero. Build leverage.</h1>

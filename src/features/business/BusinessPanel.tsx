@@ -21,7 +21,9 @@ export function BusinessPanel({ state, dispatch }: Props) {
       </div>
 
       <div className="card-grid">
-        {BUSINESSES.map((business) => (
+        {BUSINESSES.map((business) => {
+          const buyReason = !canBuyBusiness(state, business) ? 'Business not available' : state.cash < business.cost ? `Need ${money(business.cost)} cash` : undefined
+          return (
           <article className="card" key={business.id}>
             {business.imageUrl ? (
               <div className="card-media">
@@ -43,23 +45,32 @@ export function BusinessPanel({ state, dispatch }: Props) {
               <span className="tag">Expense {money(business.baseExpense)}</span>
               <span className="tag">Rep {business.reputationRequired}+</span>
             </div>
-            <div className="action-row">
-              {(business.preferredDistricts ?? Object.keys(DISTRICT_MAP)).map((districtId) => {
-                const district = DISTRICT_MAP[districtId]
-                return (
-                  <button
-                    className="mini-button ghost"
-                    key={`${business.id}-${districtId}`}
-                    disabled={!canBuyBusiness(state, business) || state.cash < business.cost}
-                    onClick={() => dispatch({ type: 'BUY_BUSINESS', templateId: business.id, districtId })}
-                  >
-                    {district.name}
-                  </button>
-                )
-              })}
+            <div className="action-stack">
+              <div className="action-section">
+                <span className="action-label">Primary Action</span>
+                <div className="action-row">
+                  {(business.preferredDistricts ?? Object.keys(DISTRICT_MAP)).map((districtId) => {
+                    const district = DISTRICT_MAP[districtId]
+                    return (
+                      <button
+                        className="mini-button ghost"
+                        key={`${business.id}-${districtId}`}
+                        disabled={!!buyReason}
+                        onClick={() => dispatch({ type: 'BUY_BUSINESS', templateId: business.id, districtId })}
+                        title={buyReason}
+                      >
+                        {district.name}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="action-hint">
+                  {buyReason ? `Blocked: ${buyReason}.` : 'Primary move: pick the district that best matches the business and current local momentum.'}
+                </p>
+              </div>
             </div>
           </article>
-        ))}
+        )})}
       </div>
 
       <div className="panel-header subhead">
@@ -81,6 +92,26 @@ export function BusinessPanel({ state, dispatch }: Props) {
             const template = BUSINESSES.find((item) => item.id === business.templateId) ?? BUSINESSES[0]
             const district = DISTRICT_MAP[business.districtId]
             const businessDebt = getBusinessDebtBalance(state, business.uid)
+            const loanReason = !canTakeBusinessLoan(state, business)
+              ? !state.bankAccount
+                ? 'Open a bank account first'
+                : state.actionPoints <= 0
+                  ? 'No actions left this week'
+                  : state.creditScore < 520
+                    ? 'Need 520 credit score'
+                    : state.bankTrust < 12
+                      ? 'Need 12 bank trust'
+                      : businessDebt > 0
+                        ? 'Business already has debt'
+                        : business.condition < 45
+                          ? 'Raise condition above 45'
+                          : business.monthsOperating < 1
+                            ? 'Operate at least 1 month first'
+                            : 'Loan unavailable'
+              : undefined
+            const marketingReason = state.actionPoints <= 0 ? 'No actions left this week' : state.cash < 320 ? 'Need $320 cash' : business.marketing >= 5 ? 'Marketing already maxed' : undefined
+            const staffingReason = state.actionPoints <= 0 ? 'No actions left this week' : state.cash < 420 ? 'Need $420 cash' : business.staffing >= 5 ? 'Staffing already maxed' : undefined
+            const maintenanceReason = state.actionPoints <= 0 ? 'No actions left this week' : state.cash < 260 ? 'Need $260 cash' : business.condition >= 95 ? 'Condition already high' : undefined
             return (
               <article className="card owned-card" key={business.uid}>
                 {template.imageUrl ? (
@@ -107,25 +138,43 @@ export function BusinessPanel({ state, dispatch }: Props) {
                   <span className="tag">Age {business.monthsOperating} mo</span>
                   {businessDebt > 0 ? <span className="tag accent">Debt {money(businessDebt)}</span> : null}
                 </div>
-                <div className="action-row">
-                  <button className="mini-button" onClick={() => dispatch({ type: 'TOGGLE_BUSINESS', businessUid: business.uid })}>
-                    {business.active ? 'Pause Ops' : 'Resume Ops'}
-                  </button>
-                  <button className="mini-button ghost" disabled={!canTakeBusinessLoan(state, business)} onClick={() => dispatch({ type: 'TAKE_BUSINESS_LOAN', businessUid: business.uid })}>
-                    Business Loan
-                  </button>
-                  <button className="mini-button ghost" disabled={state.actionPoints <= 0 || state.cash < 320 || business.marketing >= 5} onClick={() => dispatch({ type: 'INVEST_IN_BUSINESS', businessUid: business.uid, focus: 'marketing' })}>
-                    Marketing
-                  </button>
-                  <button className="mini-button ghost" disabled={state.actionPoints <= 0 || state.cash < 420 || business.staffing >= 5} onClick={() => dispatch({ type: 'INVEST_IN_BUSINESS', businessUid: business.uid, focus: 'staffing' })}>
-                    Staffing
-                  </button>
-                  <button className="mini-button ghost" disabled={state.actionPoints <= 0 || state.cash < 260 || business.condition >= 95} onClick={() => dispatch({ type: 'INVEST_IN_BUSINESS', businessUid: business.uid, focus: 'maintenance' })}>
-                    Maintenance
-                  </button>
-                  <button className="mini-button ghost" onClick={() => dispatch({ type: 'SELL_BUSINESS', businessUid: business.uid })}>
-                    Sell
-                  </button>
+                <div className="action-stack">
+                  <div className="action-section">
+                    <span className="action-label">Primary Actions</span>
+                    <div className="action-row">
+                      <button className="mini-button" onClick={() => dispatch({ type: 'TOGGLE_BUSINESS', businessUid: business.uid })}>
+                        {business.active ? 'Pause Ops' : 'Resume Ops'}
+                      </button>
+                      <button className="mini-button ghost" disabled={!!marketingReason} onClick={() => dispatch({ type: 'INVEST_IN_BUSINESS', businessUid: business.uid, focus: 'marketing' })} title={marketingReason}>
+                        Marketing
+                      </button>
+                      <button className="mini-button ghost" disabled={!!staffingReason} onClick={() => dispatch({ type: 'INVEST_IN_BUSINESS', businessUid: business.uid, focus: 'staffing' })} title={staffingReason}>
+                        Staffing
+                      </button>
+                      <button className="mini-button ghost" disabled={!!maintenanceReason} onClick={() => dispatch({ type: 'INVEST_IN_BUSINESS', businessUid: business.uid, focus: 'maintenance' })} title={maintenanceReason}>
+                        Maintenance
+                      </button>
+                    </div>
+                    <p className="action-hint">
+                      {maintenanceReason && !business.active
+                        ? 'Primary move: resume operations only when you actually want the business generating again.'
+                        : 'Primary move: operate the business, then invest in whichever weak point is currently holding profit back.'}
+                    </p>
+                  </div>
+                  <div className="action-section">
+                    <span className="action-label">Secondary Actions</span>
+                    <div className="action-row">
+                      <button className="mini-button ghost" disabled={!!loanReason} onClick={() => dispatch({ type: 'TAKE_BUSINESS_LOAN', businessUid: business.uid })} title={loanReason}>
+                        Business Loan
+                      </button>
+                      <button className="mini-button ghost" onClick={() => dispatch({ type: 'SELL_BUSINESS', businessUid: business.uid })}>
+                        Sell
+                      </button>
+                    </div>
+                    <p className="action-hint">
+                      {loanReason ? `Loan blocked: ${loanReason}.` : 'Secondary move: use a business loan only after the company has some operating history behind it.'}
+                    </p>
+                  </div>
                 </div>
               </article>
             )

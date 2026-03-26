@@ -23,6 +23,22 @@ export function EducationPanel({ state, dispatch }: Props) {
     ? EDUCATION_PROGRAMS.find((program) => program.id === state.educationEnrollment?.programId) ?? null
     : null
 
+  const getCashReason = (program: (typeof EDUCATION_PROGRAMS)[number], alreadyOwned: boolean) => {
+    if (state.educationEnrollment) return 'Finish your current program first'
+    if (alreadyOwned) return 'You already earned this credential'
+    if (state.reputation < program.reputationRequired) return `Reach reputation ${program.reputationRequired}`
+    if (state.cash < program.totalCost) return `Need ${money(program.totalCost)} cash`
+    return undefined
+  }
+
+  const getLoanReason = (program: (typeof EDUCATION_PROGRAMS)[number], alreadyOwned: boolean) => {
+    if (state.educationEnrollment) return 'Finish your current program first'
+    if (alreadyOwned) return 'You already earned this credential'
+    if (!state.bankAccount) return 'Open a bank account first'
+    if (state.reputation < program.reputationRequired) return `Reach reputation ${program.reputationRequired}`
+    return undefined
+  }
+
   return (
     <section className="panel">
       <div className="panel-header">
@@ -55,6 +71,8 @@ export function EducationPanel({ state, dispatch }: Props) {
       <div className="card-grid">
         {EDUCATION_PROGRAMS.map((program) => {
           const alreadyOwned = program.certificationReward ? state.certifications.includes(program.certificationReward) : false
+          const cashReason = getCashReason(program, alreadyOwned)
+          const loanReason = getLoanReason(program, alreadyOwned)
           return (
             <article className="card" key={program.id}>
               <CardMedia imageUrl={program.imageUrl} imageAlt={program.imageAlt} />
@@ -70,21 +88,41 @@ export function EducationPanel({ state, dispatch }: Props) {
                 <span className="tag">Stress +{program.monthlyStress}/mo</span>
                 {program.certificationReward ? <span className="tag">{COURSE_MAP[program.certificationReward].title}</span> : null}
               </div>
-              <div className="action-row">
-                <button
-                  className="mini-button"
-                  disabled={!!state.educationEnrollment || state.cash < program.totalCost || state.reputation < program.reputationRequired || alreadyOwned}
-                  onClick={() => dispatch({ type: 'ENROLL_EDUCATION', programId: program.id, financing: 'cash' })}
-                >
-                  Pay Cash
-                </button>
-                <button
-                  className="mini-button ghost"
-                  disabled={!!state.educationEnrollment || !state.bankAccount || state.reputation < program.reputationRequired || alreadyOwned}
-                  onClick={() => dispatch({ type: 'ENROLL_EDUCATION', programId: program.id, financing: 'student-loan' })}
-                >
-                  Student Loan
-                </button>
+              <div className="action-stack">
+                <div className="action-section">
+                  <span className="action-label">Primary Action</span>
+                  <div className="action-row">
+                    <button
+                      className="mini-button"
+                      disabled={!!cashReason}
+                      onClick={() => dispatch({ type: 'ENROLL_EDUCATION', programId: program.id, financing: 'cash' })}
+                      title={cashReason}
+                    >
+                      Pay Cash
+                    </button>
+                    <button
+                      className="mini-button ghost"
+                      disabled={!!loanReason}
+                      onClick={() => dispatch({ type: 'ENROLL_EDUCATION', programId: program.id, financing: 'student-loan' })}
+                      title={loanReason}
+                    >
+                      Student Loan
+                    </button>
+                  </div>
+                  <p className="action-hint">
+                    {cashReason
+                      ? `Blocked: ${cashReason}.`
+                      : 'Primary move: pay cash if you can absorb the runway hit.'}
+                  </p>
+                </div>
+                <div className="action-section">
+                  <span className="action-label">Secondary Path</span>
+                  <p className="action-hint">
+                    {loanReason
+                      ? `Loan path blocked: ${loanReason}.`
+                      : 'Student loan keeps cash free, but you are trading runway pressure for debt later.'}
+                  </p>
+                </div>
               </div>
             </article>
           )

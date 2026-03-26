@@ -1,4 +1,5 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import './App.css'
 import { BankingPanel } from './features/banking/BankingPanel'
 import { BusinessPanel } from './features/business/BusinessPanel'
@@ -43,12 +44,45 @@ const VIEWS: Array<{ id: ViewId; label: string; kicker: string; accent: string; 
 function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, loadState)
   const [activeView, setActiveView] = useState<ViewId>('overview')
+  const viewRefs = useRef<Array<HTMLButtonElement | null>>([])
 
   useEffect(() => {
     persistState(state)
   }, [state])
 
   const currentJob = getCurrentJob(state)
+
+  const focusView = (index: number) => {
+    const nextIndex = (index + VIEWS.length) % VIEWS.length
+    const nextView = VIEWS[nextIndex]
+    setActiveView(nextView.id)
+    viewRefs.current[nextIndex]?.focus()
+  }
+
+  const handleViewKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      event.preventDefault()
+      focusView(index + 1)
+      return
+    }
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      event.preventDefault()
+      focusView(index - 1)
+      return
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault()
+      focusView(0)
+      return
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault()
+      focusView(VIEWS.length - 1)
+    }
+  }
 
   const renderActiveView = () => {
     if (activeView === 'overview') {
@@ -75,16 +109,29 @@ function App() {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Skip to active section
+      </a>
+
       <HeroPanel state={state} currentJob={currentJob} dispatch={dispatch} />
       <SummaryStats state={state} currentJob={currentJob} />
 
-      <nav className="view-nav" aria-label="Game sections">
-        {VIEWS.map((view) => (
+      <nav className="view-nav" aria-label="Game sections" role="tablist">
+        {VIEWS.map((view, index) => (
           <button
             key={view.id}
+            ref={(element) => {
+              viewRefs.current[index] = element
+            }}
             className={`view-chip ${activeView === view.id ? 'active' : ''}`}
             onClick={() => setActiveView(view.id)}
+            onKeyDown={(event) => handleViewKeyDown(event, index)}
             type="button"
+            role="tab"
+            id={`tab-${view.id}`}
+            aria-selected={activeView === view.id}
+            aria-controls={`panel-${view.id}`}
+            tabIndex={activeView === view.id ? 0 : -1}
             style={
               {
                 '--chip-accent': view.accent,
@@ -99,9 +146,16 @@ function App() {
         ))}
       </nav>
 
-      <div className="content-shell">
+      <main
+        className="content-shell"
+        id="main-content"
+        role="tabpanel"
+        aria-labelledby={`tab-${activeView}`}
+        aria-live="polite"
+        tabIndex={-1}
+      >
         {renderActiveView()}
-      </div>
+      </main>
     </div>
   )
 }

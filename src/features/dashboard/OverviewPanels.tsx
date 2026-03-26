@@ -9,33 +9,56 @@ type SummaryProps = {
   currentJob: Job
 }
 
+type Metric = [string, string, string | undefined]
+
+function MetricRows({ items }: { items: Metric[] }) {
+  return (
+    <div className="finance-box">
+      {items.map(([label, value, tone]) => (
+        <div key={label}>
+          <span>{label}</span>
+          <strong className={tone}>{value}</strong>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function SummaryStats({ state, currentJob }: SummaryProps) {
   const passiveIncome = getPassiveIncomePreview(state)
   const housingLabel = HOUSING_OPTION_MAP[state.housingTier].title
   const bankingLabel = state.bankAccount ? 'Banked' : 'Unbanked'
   const weeklyRunway = getWeeklyRunway(state)
+  const primaryStats: Metric[] = [
+    ['Cash', money(state.cash), undefined],
+    ['Weekly Runway', money(weeklyRunway), weeklyRunway >= 0 ? 'positive' : 'negative'],
+    ['Net Worth', money(getNetWorth(state)), undefined],
+    ['Debt', money(state.debt), 'negative'],
+    ['Main Pay', money(currentJob.salary), undefined],
+    ['Housing', housingLabel, hasStableHousing(state) ? undefined : 'negative'],
+    ['Banking', bankingLabel, state.bankAccount ? undefined : 'negative'],
+    ['Economy', state.economyPhase, undefined],
+  ]
+  const secondaryStats: Metric[] = [
+    ['Passive Income', money(passiveIncome), undefined],
+    ['Credit', String(state.creditScore), undefined],
+    ['Knowledge', String(state.knowledge), undefined],
+    ['Inflation', `${state.inflation.toFixed(1)}%`, undefined],
+  ]
 
   return (
     <section className="stat-grid">
-      {[
-        ['Cash', money(state.cash), undefined],
-        ['Weekly Runway', money(weeklyRunway), weeklyRunway >= 0 ? 'positive' : 'negative'],
-        ['Net Worth', money(getNetWorth(state)), undefined],
-        ['Debt', money(state.debt), 'negative'],
-        ['Main Pay', money(currentJob.salary), undefined],
-        ['Passive Income', money(passiveIncome), undefined],
-        ['Credit', String(state.creditScore), undefined],
-        ['Knowledge', String(state.knowledge), undefined],
-        ['Housing', housingLabel, hasStableHousing(state) ? undefined : 'negative'],
-        ['Banking', bankingLabel, state.bankAccount ? undefined : 'negative'],
-        ['Economy', state.economyPhase, undefined],
-        ['Inflation', `${state.inflation.toFixed(1)}%`, undefined],
-      ].map(([label, value, tone]) => (
+      {primaryStats.map(([label, value, tone]) => (
         <article className="stat-card" key={label}>
           <span>{label}</span>
           <strong className={tone}>{value}</strong>
         </article>
       ))}
+
+      <details className="detail-block stat-detail">
+        <summary>More run stats</summary>
+        <MetricRows items={secondaryStats} />
+      </details>
     </section>
   )
 }
@@ -59,6 +82,39 @@ export function SidePanel({ state, dispatch }: SideProps) {
   const transportLabel = TRANSPORT_OPTION_MAP[state.transportTier].title
   const foodLabel = FOOD_OPTION_MAP[state.foodTier].title
   const wellnessLabel = WELLNESS_OPTION_MAP[state.wellnessTier].title
+  const coreFinance: Metric[] = [
+    ['Living costs', money(livingCost), undefined],
+    ['Debt service', money(debtService), undefined],
+    ['Finance charges', money(interestPreview), undefined],
+    ['Weekly tax estimate', money(taxPreview), undefined],
+  ]
+  const financeDetails: Metric[] = [
+    ['Interest rate', `${(getInterestRate(state) * 100).toFixed(1)}%`, undefined],
+    ['Savings yield', `${(getSavingsRate(state) * 100).toFixed(1)}%`, undefined],
+    ['Trading fee', money(getTradingFee(state)), undefined],
+    ['Renovation cost', money(getRenovationCost(state)), undefined],
+  ]
+  const coreSignals: Metric[] = [
+    ['Phase', state.economyPhase, undefined],
+    ['Inflation', `${state.inflation.toFixed(1)}%`, undefined],
+    ['Credit score', String(state.creditScore), undefined],
+    ['Tax due', money(state.taxDue), state.taxDue > 0 ? 'negative' : undefined],
+  ]
+  const signalDetails: Metric[] = [
+    ['Unemployment', `${state.unemployment.toFixed(1)}%`, undefined],
+    ['Housing demand', state.housingDemand > 0 ? `+${state.housingDemand.toFixed(1)}` : state.housingDemand.toFixed(1), undefined],
+    ['Market sentiment', state.marketSentiment > 0 ? `+${state.marketSentiment.toFixed(1)}` : state.marketSentiment.toFixed(1), undefined],
+    ['Bank trust', String(state.bankTrust), undefined],
+    ['Card utilization', creditCard ? `${(getCreditUtilization(state) * 100).toFixed(0)}%` : 'N/A', undefined],
+    ['Student grace', studentDebt && (studentDebt.deferMonthsRemaining ?? 0) > 0 ? `${studentDebt.deferMonthsRemaining} mo` : 'None', undefined],
+    ['Tax rate', `${(getTaxRate(state) * 100).toFixed(1)}%`, undefined],
+    ['Compliance risk', String(getComplianceRisk(state)), undefined],
+  ]
+  const topMilestones = milestones.slice(0, 3)
+  const topTips = tips.slice(0, 2)
+  const moreTips = tips.slice(2)
+  const visibleLog = recentLog.slice(0, 3)
+  const olderLog = recentLog.slice(3)
 
   return (
     <div className="overview-side-grid">
@@ -86,12 +142,17 @@ export function SidePanel({ state, dispatch }: SideProps) {
           </article>
         </div>
 
-        <div className="finance-box">
-          <div><span>Housing</span><strong>{housingLabel}</strong></div>
-          <div><span>Transport</span><strong>{transportLabel}</strong></div>
-          <div><span>Food</span><strong>{foodLabel}</strong></div>
-          <div><span>Recovery</span><strong>{wellnessLabel}</strong></div>
-        </div>
+        <details className="detail-block">
+          <summary>Living setup</summary>
+          <MetricRows
+            items={[
+              ['Housing', housingLabel, hasStableHousing(state) ? undefined : 'negative'],
+              ['Transport', transportLabel, undefined],
+              ['Food', foodLabel, undefined],
+              ['Recovery', wellnessLabel, undefined],
+            ]}
+          />
+        </details>
       </section>
 
       <section className="panel side-panel">
@@ -103,16 +164,12 @@ export function SidePanel({ state, dispatch }: SideProps) {
           <p>The overview should answer one question quickly: can you survive the next week without panicking?</p>
         </div>
 
-        <div className="finance-box">
-          <div><span>Living costs</span><strong>{money(livingCost)}</strong></div>
-          <div><span>Debt service</span><strong>{money(debtService)}</strong></div>
-          <div><span>Finance charges</span><strong>{money(interestPreview)}</strong></div>
-          <div><span>Weekly tax estimate</span><strong>{money(taxPreview)}</strong></div>
-          <div><span>Interest rate</span><strong>{(getInterestRate(state) * 100).toFixed(1)}%</strong></div>
-          <div><span>Savings yield</span><strong>{(getSavingsRate(state) * 100).toFixed(1)}%</strong></div>
-          <div><span>Trading fee</span><strong>{money(getTradingFee(state))}</strong></div>
-          <div><span>Renovation cost</span><strong>{money(getRenovationCost(state))}</strong></div>
-        </div>
+        <MetricRows items={coreFinance} />
+
+        <details className="detail-block">
+          <summary>More finance detail</summary>
+          <MetricRows items={financeDetails} />
+        </details>
 
         <div className="action-row wide">
           <button className="mini-button" disabled={state.cash < 250 || state.debt <= 0} onClick={() => dispatch({ type: 'REPAY_DEBT', amount: 250 })}>
@@ -136,20 +193,12 @@ export function SidePanel({ state, dispatch }: SideProps) {
           <p>Macro and lending conditions now shape jobs, borrowing terms, and whether growth should be cautious or aggressive.</p>
         </div>
 
-        <div className="finance-box">
-          <div><span>Phase</span><strong>{state.economyPhase}</strong></div>
-          <div><span>Inflation</span><strong>{state.inflation.toFixed(1)}%</strong></div>
-          <div><span>Unemployment</span><strong>{state.unemployment.toFixed(1)}%</strong></div>
-          <div><span>Housing demand</span><strong>{state.housingDemand > 0 ? `+${state.housingDemand.toFixed(1)}` : state.housingDemand.toFixed(1)}</strong></div>
-          <div><span>Market sentiment</span><strong>{state.marketSentiment > 0 ? `+${state.marketSentiment.toFixed(1)}` : state.marketSentiment.toFixed(1)}</strong></div>
-          <div><span>Credit score</span><strong>{state.creditScore}</strong></div>
-          <div><span>Bank trust</span><strong>{state.bankTrust}</strong></div>
-          <div><span>Card utilization</span><strong>{creditCard ? `${(getCreditUtilization(state) * 100).toFixed(0)}%` : 'N/A'}</strong></div>
-          <div><span>Student grace</span><strong>{studentDebt && (studentDebt.deferMonthsRemaining ?? 0) > 0 ? `${studentDebt.deferMonthsRemaining} mo` : 'None'}</strong></div>
-          <div><span>Tax due</span><strong>{money(state.taxDue)}</strong></div>
-          <div><span>Tax rate</span><strong>{(getTaxRate(state) * 100).toFixed(1)}%</strong></div>
-          <div><span>Compliance risk</span><strong>{getComplianceRisk(state)}</strong></div>
-        </div>
+        <MetricRows items={coreSignals} />
+
+        <details className="detail-block">
+          <summary>More world and credit detail</summary>
+          <MetricRows items={signalDetails} />
+        </details>
 
         <div className="action-row wide">
           <button className="mini-button" disabled={state.cash < 250 || state.taxDue <= 0} onClick={() => dispatch({ type: 'PAY_TAXES', amount: 250 })}>
@@ -174,7 +223,7 @@ export function SidePanel({ state, dispatch }: SideProps) {
         </div>
 
         <div className="milestone-list">
-          {milestones.map((milestone) => (
+          {topMilestones.map((milestone) => (
             <article className={`milestone ${milestone.complete ? 'complete' : ''}`} key={milestone.label}>
               <strong>{milestone.complete ? 'Completed' : 'In Progress'}</strong>
               <span>{milestone.label}</span>
@@ -183,12 +232,25 @@ export function SidePanel({ state, dispatch }: SideProps) {
         </div>
 
         <div className="tip-list">
-          {tips.map((tip) => (
+          {topTips.map((tip) => (
             <article className="tip-card" key={tip}>
               {tip}
             </article>
           ))}
         </div>
+
+        {moreTips.length > 0 ? (
+          <details className="detail-block">
+            <summary>More guidance</summary>
+            <div className="tip-list">
+              {moreTips.map((tip) => (
+                <article className="tip-card" key={tip}>
+                  {tip}
+                </article>
+              ))}
+            </div>
+          </details>
+        ) : null}
       </section>
 
       <section className="panel side-panel">
@@ -201,7 +263,7 @@ export function SidePanel({ state, dispatch }: SideProps) {
         </div>
 
         <div className="log-list">
-          {recentLog.map((entry) => (
+          {visibleLog.map((entry) => (
             <article className={`log-entry ${entry.tone}`} key={entry.id}>
               <div className="log-topline">
                 <strong>{entry.title}</strong>
@@ -211,6 +273,23 @@ export function SidePanel({ state, dispatch }: SideProps) {
             </article>
           ))}
         </div>
+
+        {olderLog.length > 0 ? (
+          <details className="detail-block">
+            <summary>Older overview events</summary>
+            <div className="log-list">
+              {olderLog.map((entry) => (
+                <article className={`log-entry ${entry.tone}`} key={entry.id}>
+                  <div className="log-topline">
+                    <strong>{entry.title}</strong>
+                    <span>Week {entry.week}</span>
+                  </div>
+                  <p>{entry.detail}</p>
+                </article>
+              ))}
+            </div>
+          </details>
+        ) : null}
       </section>
     </div>
   )
