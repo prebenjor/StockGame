@@ -1,7 +1,8 @@
 .app-shell {
-  width: min(1480px, calc(100% - 32px));
+  width: min(100%, 1880px);
   margin: 0 auto;
-  padding: 28px 324px 48px 0;
+  box-sizing: border-box;
+  padding: clamp(16px, 2vw, 28px) clamp(16px, 2vw, 28px) 48px;
 }
 
 .skip-link {
@@ -45,8 +46,8 @@
 
 .hero-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.7fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.92fr);
+  gap: clamp(16px, 2vw, 28px);
   padding: 22px 24px;
   border-radius: 30px;
   position: relative;
@@ -92,10 +93,10 @@
 
 .hero-copy h1 {
   margin: 10px 0 12px;
-  font-size: clamp(1.9rem, 3vw, 3.4rem);
+  font-size: clamp(2.2rem, 4vw, 4.6rem);
   line-height: 0.92;
   letter-spacing: -0.055em;
-  max-width: 9ch;
+  max-width: 10ch;
   color: #26150b;
 }
 
@@ -278,7 +279,7 @@ button:focus-visible,
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
   margin-top: 14px;
 }
@@ -301,7 +302,7 @@ button:focus-visible,
 
 .view-nav {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
   margin-top: 18px;
 }
@@ -417,7 +418,7 @@ button:focus-visible,
 
 .hints-dock {
   top: 18px;
-  width: min(300px, calc(100vw - 36px));
+  width: min(286px, calc(100vw - 36px));
   display: grid;
   gap: 14px;
   padding: 18px;
@@ -528,7 +529,7 @@ button:focus-visible,
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.25fr);
+  grid-template-columns: minmax(360px, 0.98fr) minmax(0, 1.32fr);
   gap: 18px;
   align-items: start;
 }
@@ -1169,10 +1170,6 @@ button:focus-visible,
 }
 
 @media (max-width: 1320px) {
-  .app-shell {
-    padding-right: 0;
-  }
-
   .stat-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -1186,31 +1183,67 @@ button:focus-visible,
   }
 }
 
+@media (min-width: 1680px) {
+  .app-shell {
+    padding-right: calc(clamp(16px, 2vw, 28px) + 292px);
+  }
+}
+
+@media (max-width: 1560px) {
+  .hints-dock {
+    top: auto;
+    bottom: 18px;
+    max-height: min(72svh, 560px);
+    overflow: auto;
+  }
+}
+
+@media (max-width: 1120px) {
+  .hero-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .view-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 900px) {
   .app-shell {
-    width: min(100%, calc(100% - 20px));
-    padding-top: 14px;
-    padding-right: 0;
+    width: 100%;
+    padding: 12px 12px 92px;
   }
 
   .hints-dock {
     top: auto;
     bottom: 18px;
-    width: min(100vw - 20px, 360px);
+    left: 12px;
+    right: 12px;
+    width: auto;
     max-height: min(70svh, 520px);
     overflow: auto;
   }
 
   .hero-panel,
-  .dual-grid,
-  .stat-grid {
+  .dual-grid {
     grid-template-columns: 1fr;
   }
 
-  .view-nav,
   .dashboard-grid,
   .overview-side-grid {
     grid-template-columns: 1fr;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .view-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .hero-side-grid {
@@ -1219,7 +1252,7 @@ button:focus-visible,
 
   .panel,
   .hero-panel {
-    padding: 20px;
+    padding: 18px;
     border-radius: 24px;
   }
 
@@ -1242,4 +1275,41 @@ button:focus-visible,
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .hints-reveal {
+    left: 50%;
+    right: auto;
+    bottom: 12px;
+    width: auto;
+    min-width: 164px;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-copy h1 {
+    font-size: clamp(2rem, 12vw, 3.4rem);
+    max-width: 8ch;
+  }
+
+  .stat-grid,
+  .view-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .month-badge,
+  .hero-stat,
+  .tip-card,
+  .milestone,
+  .log-entry,
+  .finance-box,
+  .card,
+  .condition-card,
+  .history-row,
+  .lifestyle-option,
+  .banking-row {
+    padding: 12px 14px;
+  }
+
 }

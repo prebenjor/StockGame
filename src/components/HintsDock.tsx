@@ -26,7 +26,9 @@ const CONTROL_GROUPS = [
 export function HintsDock() {
   const [hidden, setHidden] = useState(() => {
     if (typeof window === 'undefined') return false
-    return window.localStorage.getItem(HINTS_STORAGE_KEY) === 'hidden'
+    const storedPreference = window.localStorage.getItem(HINTS_STORAGE_KEY)
+    if (storedPreference === 'hidden') return true
+    return window.matchMedia('(max-width: 1560px)').matches
   })
 
   const hideDock = () => {
