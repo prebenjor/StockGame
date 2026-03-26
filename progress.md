@@ -30,11 +30,27 @@ Original prompt: Build a fun comprehensive browser stock/wealth game where the p
 - Starter state is now less physically broken and the survival arrears payment is lighter, so a careful early run can hover near break-even instead of auto-spiraling.
 - Verification passed with `npm run lint`, `npx tsc -b`, and `npm run build`.
 - `npx playwright --version` now works outside the sandbox and reports Playwright `1.58.2`, but the repo still does not expose `render_game_to_text` or `advanceTime`, so the full `develop-web-game` automation loop is still blocked.
+- Added browser automation hooks for the existing management sim instead of rewriting it into a separate canvas game surface.
+- `src/App.tsx` now exposes `window.render_game_to_text()` and `window.advanceTime(ms)`, and it adds global keyboard controls so Playwright can move between sections and trigger `Advance Week` with `Space`.
+- `src/features/dashboard/HeroPanel.tsx` now exposes stable button ids (`advance-week-button`, `reset-save-button`) and visible keyboard-hint copy.
+- Added `playwright-actions.json` so the shared `develop-web-game` client has a reproducible action burst for section navigation plus week advancement.
+- Installed local repo `playwright@1.58.2` as a dev dependency, then installed Playwright in `C:\Users\asphy\.codex` plus Chromium there so the shared client script can resolve and launch successfully from its own directory tree.
+- Verified again with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Ran the shared Playwright client against `http://127.0.0.1:4173/StockGame/` and captured `output/web-game-validation/shot-0.png`, `shot-1.png`, `state-0.json`, and `state-1.json` with no error files generated.
+- Browser validation matched the automation state: the run advanced from week 2 to week 3, debt stepped from `$710` to `$700`, active view returned to `overview`, and no console/page errors were captured.
+- Extended the automation path beyond simple navigation. The app shell now treats `A` and `B` as context actions so the shared Playwright client can drive real gameplay systems without custom DOM-click tooling.
+- `Career` automation now runs the best currently available gig on `A` and adds the starter delivery-route commitment on `B`.
+- `Lifestyle`/`Banking` automation now opens a bank account on `A`, and `Market` automation now ensures `YIELD` is watched on `B` and buys a preferred affordable ticker on `A`.
+- Added stable ids across the key interaction surface: bank-account entry points, gig buttons, side-job buttons, and market buy/watch/sell buttons.
+- Added richer action files: `playwright-scenario-build-up.json` for funding + banking + market setup, `playwright-scenario-full-loop.json` for the same setup plus a week advance, and a small `playwright-scenario-advance-week.json` follow-up sequence.
+- Verified the richer browser loop with the shared client and captured `output/web-game-build-up/shot-0.png` plus `state-0.json`, then `output/web-game-full-loop/shot-0.png` plus `state-0.json`, again with no error files generated.
+- The validated setup flow now reaches a banked state with `Scheduled Delivery Route` active, `YIELD` added to the watchlist, and 1 share of `CITY` purchased before the first week ends.
+- The validated full-loop follow-up advances to week 2 while preserving the bank account, side job, watchlist expansion, and `CITY` holding. Cash rose to `$214`, debt stepped down to `$710`, and the overview screenshot matched the exported state.
 
 TODO
-- Add browser-test hooks if the repo should support the `develop-web-game` Playwright loop.
-- Verify the new debt-product flow interactively in browser once those hooks or a local Playwright setup exist.
-- Verify ETF/watchlist/news flow interactively in browser once those hooks or a local Playwright setup exist.
+- Verify the new debt-product flow interactively in browser now that the hooks and Playwright setup exist.
+- Verify ETF/watchlist/news flow interactively in browser now that the hooks and Playwright setup exist.
+- Add one more automation path that opens a credit card once the score/trust threshold is met, then verify charge + repayment behavior in the exported state.
 - Verify weekly pacing in-browser and rebalance salary, rent, business, and stress numbers if the new cadence feels too harsh or too soft.
 - Consider making schedule choice even more explicit next: visible weekly calendar blocks, part-time/full-time toggles, and side-job churn events.
 - If the overview still feels busy, reduce copy and collapse low-priority metrics before adding more systems.

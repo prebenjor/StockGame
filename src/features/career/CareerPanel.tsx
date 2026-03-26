@@ -121,10 +121,22 @@ export function CareerPanel({ state, dispatch }: Props) {
               <div className="action-stack">
                 <div className="action-section">
                   <div className="action-row">
-                    <button className="mini-button" disabled={!canTakeSideJob(state, sideJob)} onClick={() => dispatch({ type: 'TAKE_SIDE_JOB', sideJobId: sideJob.id })} title={lockedReason}>
+                    <button
+                      id={`add-side-job-${sideJob.id}`}
+                      className="mini-button"
+                      disabled={!canTakeSideJob(state, sideJob)}
+                      onClick={() => dispatch({ type: 'TAKE_SIDE_JOB', sideJobId: sideJob.id })}
+                      title={lockedReason}
+                    >
                       {isCurrent ? 'Active' : 'Add Commitment'}
                     </button>
-                    <button className="mini-button ghost" disabled={!isCurrent} onClick={() => dispatch({ type: 'DROP_SIDE_JOB', sideJobId: sideJob.id })} title={!isCurrent ? 'Not currently active' : undefined}>
+                    <button
+                      id={`drop-side-job-${sideJob.id}`}
+                      className="mini-button ghost"
+                      disabled={!isCurrent}
+                      onClick={() => dispatch({ type: 'DROP_SIDE_JOB', sideJobId: sideJob.id })}
+                      title={!isCurrent ? 'Not currently active' : undefined}
+                    >
                       Drop
                     </button>
                   </div>
@@ -164,7 +176,13 @@ export function CareerPanel({ state, dispatch }: Props) {
               </div>
               <div className="action-stack">
                 <div className="action-section">
-                  <button className="mini-button" disabled={!canRunGig(state, gig)} onClick={() => dispatch({ type: 'RUN_GIG', gigId: gig.id })} title={lockedReason ?? undefined}>
+                  <button
+                    id={`run-gig-${gig.id}`}
+                    className="mini-button"
+                    disabled={!canRunGig(state, gig)}
+                    onClick={() => dispatch({ type: 'RUN_GIG', gigId: gig.id })}
+                    title={lockedReason ?? undefined}
+                  >
                     Run Gig
                   </button>
                   <p className="action-hint">

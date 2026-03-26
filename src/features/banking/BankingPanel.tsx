@@ -18,6 +18,7 @@ export function BankingPanel({ state, dispatch }: Props) {
   const save1000Reason = !state.bankAccount ? 'Open a bank account first' : state.cash < 1000 ? 'Need $1,000 in checking' : undefined
   const withdraw250Reason = !state.bankAccount ? 'Open a bank account first' : state.savingsBalance < 250 ? 'Need $250 in savings' : undefined
   const withdraw1000Reason = !state.bankAccount ? 'Open a bank account first' : state.savingsBalance < 1000 ? 'Need $1,000 in savings' : undefined
+  const openAccountReason = state.bankAccount ? 'Account already open' : state.actionPoints <= 0 ? 'No actions left this week' : state.cash < 25 ? 'Need $25 cash' : undefined
   const cardOpenReason = creditCard ? 'Starter card already open' : !state.bankAccount ? 'Open a bank account first' : state.creditScore < 560 ? 'Reach 560 credit score' : state.bankTrust < 14 ? 'Raise bank trust to 14' : undefined
   const charge250Reason = !creditCard ? 'Open a starter card first' : availableCredit < 250 ? 'Need $250 available credit' : undefined
   const charge750Reason = !creditCard ? 'Open a starter card first' : availableCredit < 750 ? 'Need $750 available credit' : undefined
@@ -64,6 +65,15 @@ export function BankingPanel({ state, dispatch }: Props) {
             <div className="action-section">
               <span className="action-label">Secondary Actions</span>
               <div className="action-row">
+                <button
+                  id="open-bank-account-button"
+                  className="mini-button"
+                  disabled={!!openAccountReason}
+                  onClick={() => dispatch({ type: 'OPEN_BANK_ACCOUNT' })}
+                  title={openAccountReason}
+                >
+                  {state.bankAccount ? 'Account Open' : 'Open Account'}
+                </button>
                 <button className="mini-button ghost" disabled={!!withdraw250Reason} onClick={() => dispatch({ type: 'WITHDRAW_SAVINGS', amount: 250 })} title={withdraw250Reason}>
                   Withdraw $250
                 </button>
@@ -81,7 +91,9 @@ export function BankingPanel({ state, dispatch }: Props) {
                 </button>
               </div>
               <p className="action-hint">
-                {cardOpenReason && !creditCard
+                {openAccountReason && !state.bankAccount
+                  ? `Account path blocked: ${openAccountReason}.`
+                  : cardOpenReason && !creditCard
                   ? `Card path blocked: ${cardOpenReason}.`
                   : 'Secondary actions: withdraw if you need liquidity, and use credit only as short-term buffer.'}
               </p>

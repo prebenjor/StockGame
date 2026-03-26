@@ -47,13 +47,18 @@ export function HeroPanel({ state, currentJob, dispatch }: Props) {
           <span className="meta-pill wide">{sideWorkLabel}</span>
         </div>
         <div className="hero-actions">
-          <button className="primary-button" onClick={() => startTransition(() => dispatch({ type: 'END_WEEK' }))}>
+          <button
+            id="advance-week-button"
+            className="primary-button"
+            onClick={() => startTransition(() => dispatch({ type: 'END_WEEK' }))}
+          >
             Advance Week
           </button>
-          <button className="secondary-button" onClick={() => dispatch({ type: 'RESET' })}>
+          <button id="reset-save-button" className="secondary-button" onClick={() => dispatch({ type: 'RESET' })}>
             Reset Save
           </button>
         </div>
+        <p className="action-hint">Keyboard: Left/Right switches sections, Space advances a week, 1-0 jumps between tabs, and A/B trigger context actions for automation-friendly play.</p>
       </div>
 
       <div className="hero-side">

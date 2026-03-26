@@ -101,7 +101,7 @@ export function LifestylePanel({ state, dispatch }: Props) {
           <div className="action-stack">
             <div className="action-section">
               <span className="action-label">Primary Action</span>
-              <button className="mini-button" disabled={!!bankReason} onClick={() => dispatch({ type: 'OPEN_BANK_ACCOUNT' })} title={bankReason}>
+              <button id="lifestyle-open-account-button" className="mini-button" disabled={!!bankReason} onClick={() => dispatch({ type: 'OPEN_BANK_ACCOUNT' })} title={bankReason}>
                 {state.bankAccount ? 'Opened' : 'Open Account'}
               </button>
               <p className="action-hint">

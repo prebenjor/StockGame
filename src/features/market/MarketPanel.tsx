@@ -154,13 +154,25 @@ export function MarketPanel({ state, dispatch }: Props) {
                 <div className="action-section">
                   <span className="action-label">Primary Action</span>
                   <div className="action-row">
-                    <button className="mini-button" disabled={!!buyOneReason} onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 1 })} title={buyOneReason}>
+                    <button
+                      id={`buy-stock-${stock.symbol}-1`}
+                      className="mini-button"
+                      disabled={!!buyOneReason}
+                      onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 1 })}
+                      title={buyOneReason}
+                    >
                       Buy 1
                     </button>
-                    <button className="mini-button" disabled={!!buyFiveReason} onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 5 })} title={buyFiveReason}>
+                    <button
+                      id={`buy-stock-${stock.symbol}-5`}
+                      className="mini-button"
+                      disabled={!!buyFiveReason}
+                      onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 5 })}
+                      title={buyFiveReason}
+                    >
                       Buy 5
                     </button>
-                    <button className="mini-button ghost" onClick={() => dispatch({ type: 'TOGGLE_WATCHLIST', symbol: stock.symbol })}>
+                    <button id={`watch-stock-${stock.symbol}`} className="mini-button ghost" onClick={() => dispatch({ type: 'TOGGLE_WATCHLIST', symbol: stock.symbol })}>
                       {isWatching ? 'Unwatch' : 'Watch'}
                     </button>
                   </div>
@@ -171,10 +183,22 @@ export function MarketPanel({ state, dispatch }: Props) {
                 <div className="action-section">
                   <span className="action-label">Secondary Actions</span>
                   <div className="action-row">
-                    <button className="mini-button ghost" disabled={!!sellReason} onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: 1 })} title={sellReason}>
+                    <button
+                      id={`sell-stock-${stock.symbol}-1`}
+                      className="mini-button ghost"
+                      disabled={!!sellReason}
+                      onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: 1 })}
+                      title={sellReason}
+                    >
                       Sell 1
                     </button>
-                    <button className="mini-button ghost" disabled={!!sellReason} onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: holding?.shares ?? 0 })} title={sellReason}>
+                    <button
+                      id={`sell-stock-${stock.symbol}-all`}
+                      className="mini-button ghost"
+                      disabled={!!sellReason}
+                      onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: holding?.shares ?? 0 })}
+                      title={sellReason}
+                    >
                       Sell All
                     </button>
                   </div>
