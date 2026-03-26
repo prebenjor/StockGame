@@ -1,7 +1,7 @@
 .app-shell {
   width: min(1480px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 28px 0 48px;
+  padding: 28px 324px 48px 0;
 }
 
 .skip-link {
@@ -397,6 +397,135 @@ button:focus-visible,
   margin-top: 18px;
 }
 
+.content-shell::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 78% 12%, var(--active-section-glow, rgba(231, 143, 31, 0.12)), transparent 26%),
+    radial-gradient(circle at 14% 82%, var(--active-section-panel, rgba(255, 233, 192, 0.18)), transparent 28%);
+  opacity: 0.8;
+}
+
+.hints-dock,
+.hints-reveal {
+  position: fixed;
+  right: 18px;
+  z-index: 30;
+}
+
+.hints-dock {
+  top: 18px;
+  width: min(300px, calc(100vw - 36px));
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 26px;
+  border: 1px solid rgba(95, 63, 34, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 249, 241, 0.96), rgba(255, 251, 246, 0.88)),
+    rgba(255, 255, 255, 0.82);
+  box-shadow:
+    0 18px 48px rgba(89, 54, 18, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(14px);
+}
+
+.hints-dock-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.hints-dock-header h2 {
+  margin: 8px 0 0;
+  font-size: 1.1rem;
+  letter-spacing: -0.04em;
+  color: #24150c;
+}
+
+.hints-dismiss {
+  padding: 8px 12px;
+  min-width: auto;
+}
+
+.hints-copy {
+  margin: 0;
+  color: #564032;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.hints-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.hint-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(120, 79, 41, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.hint-card strong {
+  color: #2b1a0f;
+  letter-spacing: -0.02em;
+}
+
+.hint-list {
+  display: grid;
+  gap: 8px;
+}
+
+.hint-row {
+  display: grid;
+  grid-template-columns: minmax(88px, auto) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.hint-row span {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(233, 219, 206, 0.86);
+  color: #583b24;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.hint-row p {
+  margin: 0;
+  color: #5a4330;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.hints-reveal {
+  bottom: 18px;
+  padding: 12px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(95, 63, 34, 0.16);
+  background:
+    linear-gradient(135deg, rgba(255, 248, 238, 0.96), rgba(255, 252, 247, 0.88)),
+    rgba(255, 255, 255, 0.84);
+  box-shadow:
+    0 16px 40px rgba(89, 54, 18, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  color: #51351a;
+  font-weight: 700;
+}
+
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.25fr);
@@ -417,6 +546,8 @@ button:focus-visible,
 .panel {
   padding: 24px;
   border-radius: 30px;
+  position: relative;
+  overflow: hidden;
 }
 
 .panel-header {
@@ -435,6 +566,211 @@ button:focus-visible,
 
 .subhead {
   margin-top: 26px;
+}
+
+.section-panel {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--section-panel, rgba(255, 247, 237, 0.92)) 72%, rgba(255, 255, 255, 0.92)), rgba(255, 252, 247, 0.88)),
+    rgba(255, 255, 255, 0.82);
+  border-color: var(--section-border, rgba(95, 63, 34, 0.16));
+}
+
+.section-panel::before {
+  content: '';
+  position: absolute;
+  inset: -80px -120px auto auto;
+  width: 340px;
+  height: 340px;
+  border-radius: 999px;
+  background: radial-gradient(circle, var(--section-glow, rgba(231, 143, 31, 0.12)), transparent 68%);
+  pointer-events: none;
+}
+
+.section-tabs,
+.section-toolbar,
+.section-stack {
+  position: relative;
+  z-index: 1;
+}
+
+.section-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.section-tab {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--section-accent, #cf7a18) 18%, rgba(95, 63, 34, 0.14));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--section-accent-soft, rgba(255, 214, 150, 0.28)) 38%, white), rgba(255, 255, 255, 0.86)),
+    rgba(255, 255, 255, 0.8);
+  border-radius: 18px;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  min-width: 124px;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.section-tab span {
+  display: block;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--section-accent, #cf7a18) 78%, #4c3828);
+}
+
+.section-tab strong {
+  display: block;
+  margin-top: 7px;
+  color: color-mix(in srgb, var(--section-accent, #cf7a18) 34%, #24150c);
+}
+
+.section-tab.active {
+  box-shadow:
+    0 16px 40px color-mix(in srgb, var(--section-glow, rgba(231, 143, 31, 0.14)) 70%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--section-accent, #cf7a18) 24%, transparent);
+  border-color: color-mix(in srgb, var(--section-accent, #cf7a18) 32%, rgba(95, 63, 34, 0.14));
+  transform: translateY(-1px);
+}
+
+.section-toolbar {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border-radius: 22px;
+  border: 1px solid color-mix(in srgb, var(--section-accent, #cf7a18) 14%, rgba(95, 63, 34, 0.14));
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--section-accent-soft, rgba(255, 214, 150, 0.18)) 32%, white), rgba(255, 255, 255, 0.88)),
+    rgba(255, 255, 255, 0.76);
+}
+
+.section-toolbar-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.toolbar-search,
+.toolbar-select,
+.toolbar-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  border-radius: 16px;
+  border: 1px solid rgba(120, 79, 41, 0.12);
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.toolbar-search {
+  flex: 1 1 280px;
+  padding: 0 14px;
+}
+
+.toolbar-search input,
+.toolbar-select select {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #2b1a0f;
+  font: inherit;
+}
+
+.toolbar-search input:focus,
+.toolbar-select select:focus {
+  outline: none;
+}
+
+.toolbar-select {
+  padding: 0 12px;
+}
+
+.toolbar-select span {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b4b30;
+  font-weight: 700;
+}
+
+.toolbar-chip {
+  padding: 0 12px;
+}
+
+.toolbar-chip input {
+  accent-color: var(--section-accent, #cf7a18);
+}
+
+.toolbar-chip span,
+.toolbar-summary {
+  color: #563f31;
+  font-size: 0.84rem;
+}
+
+.toolbar-summary {
+  margin: 0;
+}
+
+.sparkline {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.sparkline svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.sparkline.compact {
+  margin: 6px 0 2px;
+}
+
+.sparkline-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.sparkline-meta strong {
+  color: #2b1a0f;
+}
+
+.market-overview-grid {
+  align-items: stretch;
+}
+
+.market-hero-card,
+.market-overview-summary {
+  min-height: 100%;
+}
+
+.hero-market-chart {
+  min-height: 150px;
+}
+
+.market-selector-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.market-mini-card,
+.market-watch-card {
+  align-content: start;
 }
 
 .card-grid,
@@ -833,6 +1169,10 @@ button:focus-visible,
 }
 
 @media (max-width: 1320px) {
+  .app-shell {
+    padding-right: 0;
+  }
+
   .stat-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -850,6 +1190,15 @@ button:focus-visible,
   .app-shell {
     width: min(100%, calc(100% - 20px));
     padding-top: 14px;
+    padding-right: 0;
+  }
+
+  .hints-dock {
+    top: auto;
+    bottom: 18px;
+    width: min(100vw - 20px, 360px);
+    max-height: min(70svh, 520px);
+    overflow: auto;
   }
 
   .hero-panel,
@@ -872,6 +1221,19 @@ button:focus-visible,
   .hero-panel {
     padding: 20px;
     border-radius: 24px;
+  }
+
+  .section-toolbar-controls,
+  .section-tabs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .section-tab,
+  .toolbar-search,
+  .toolbar-select,
+  .toolbar-chip {
+    width: 100%;
   }
 
   .card-topline,

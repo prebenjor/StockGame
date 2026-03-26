@@ -53,12 +53,54 @@ Original prompt: Build a fun comprehensive browser stock/wealth game where the p
 - Added `playwright-scenario-credit-charge.json` and `playwright-scenario-credit-repay.json` for approval + utilization and approval + repayment coverage.
 - Verified the credit loop with the shared Playwright client. `output/web-game-credit-charge/state-0.json` reached week 3 with a live card at `$260 / $700` and `37%` utilization. `output/web-game-credit-repay/state-0.json` reached week 4 with the card paid back down to `$1 / $700` and utilization effectively `0%`.
 - No Playwright error files were generated during the credit-card validation runs.
+- Added a shared section-UI framework for the content-heavy tabs: remembered subtabs, a reusable search/filter toolbar, and themed section shells now drive Market, Career, Banking, Lifestyle, Education, Property, Business, Network, and Ledger.
+- Added a hideable `HintsDock` so persistent control copy no longer sits inline across the page.
+- Added persistent weekly `marketHistory` to save state, reducer updates, and hydration fallback so stock and ETF charts can render real history without breaking old saves.
+- Rebuilt the Market panel around subtabs (`Overview`, `Watchlist`, `News`, `Exchange`) with inline SVG charts, selected-symbol focus, and exported UI state (`activeSubtab`, toolbar summary, selected symbol, selected history) for browser automation.
+- Re-grouped the other major systems into themed subtabs with lighter search/filter affordances:
+  - Career: `Jobs`, `Side Work`, `Gigs`, `Progression`
+  - Banking: `Accounts`, `Debt`, `Credit`, `Bonds`
+  - Lifestyle: `Housing`, `Transport`, `Food`, `Recovery`, `Banking`
+  - Education: `Profile`, `Programs`
+  - Property: `Districts`, `Listings`, `Owned`
+  - Business: `Opportunities`, `Owned`, `Financing`
+  - Network: `Contacts`, `Rivals`, `Opportunities`
+  - Ledger: `Latest`, `History`
+- Verified the refactor with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Ran the shared Playwright client against the rebuilt app and captured:
+  - `output/web-game-market-direct-v2/state-0.json` showing `activeView: market`, `activeSubtab: overview`, and the new toolbar summary/state export.
+  - `output/web-game-market-week-v2/state-0.json` showing week advancement plus `selectedMarketHistory` growing from one point to two.
+  - `output/web-game-banking-overview/state-0.json` showing `activeView: banking`, `activeSubtab: accounts`, and the banking toolbar summary export.
+- Reviewed the corresponding screenshots and confirmed the new tab strips/toolbars render in-browser without Playwright error files.
+- Added a new top-level `Personal` section between `Lifestyle` and `Banking`, with themed subtabs for `Recovery`, `Leisure`, and `Social` built on the shared section-tab and toolbar framework.
+- Added data-driven personal downtime actions in `src/features/personal/data.ts` and reducer support through `RUN_PERSONAL_ACTION`. These actions are once-per-week, cost one weekly block, and provide small stress/energy/health/reputation relief without generating income.
+- Personal recovery now interacts with passive lifestyle choices instead of replacing them:
+  - `stretch` and `gym` add `+1 energy` and `+1 health`
+  - `therapy` adds extra stress relief
+  - `shelter` reduces stress relief
+  - `skip-meals` reduces energy gains
+- New state field `personalActionsUsedThisWeek` tracks which personal actions have been used and resets on `END_WEEK`.
+- Removed the inherited starting debt from fresh saves. New games now begin at `$0 debt` with no debt accounts, while still starting poor, unbanked, and unstable in housing/food/recovery.
+- Replaced the early milestone `Become debt free` with `Build a $500 emergency buffer`, and updated opening/tip copy to frame the run as fragile-but-clean rather than already underwater.
+- Relabeled the weekly action economy in player-facing copy toward `Open days` / `week blocks` instead of abstract action points, while keeping the weekly simulation cadence unchanged.
+- Added keyboard automation support for the new `Personal` section:
+  - `A` prioritizes recovery actions (`Sleep In`, then `Nature Walk`, then `Stay In`)
+  - `B` prioritizes low-cost social/leisure actions (`Community Dinner`, `Call Family`, `Meet A Friend`, `Cheap Treat`)
+- Top-level navigation now has 11 sections, so the keyboard jump model is `1-0` plus `-` for the final section. `render_game_to_text` and the hints dock were updated accordingly.
+- Verification passed with `npm run lint`, `npx tsc -b`, and `npm run build` (the build still needed to be run outside the sandbox because Vite config loading hit `spawn EPERM`).
+- Added focused browser scenarios:
+  - `playwright-scenario-banking-opener.json`
+  - `playwright-scenario-personal-week.json`
+- Validated with the shared Playwright client against the built preview:
+  - `output/web-game-banking-opener-v2/state-0.json` shows the fresh opener at week 1 in Banking with `debt: "$0"`, `cash: "$0"`, `weeklyRunway: "$15"`, and `openDays: 3`.
+  - `output/web-game-personal-week/state-0.json` shows the new Personal loop at week 2 with `activeView: "personal"`, `activeSubtab: "recovery"`, `personalActionsUsedThisWeek: ["Sleep In"]`, `openDays: 2`, and no debt.
+  - The Personal scenario intentionally pressed `A` twice before advancing the week, then once after the week tick. The final exported state confirms the once-per-week guard held and then reset correctly across the weekly rollover.
+- Reviewed `output/web-game-banking-opener-v2/shot-0.png` and `output/web-game-personal-week/shot-0.png`; both render cleanly and no `errors-*.json` files were generated.
 
 TODO
-- Verify the new debt-product flow interactively in browser now that the hooks and Playwright setup exist.
-- Verify ETF/watchlist/news flow interactively in browser now that the hooks and Playwright setup exist.
-- Extend the credit automation one step further with a deliberate carry-balance scenario so utilization penalties and score changes are also validated over multiple weeks.
-- Verify weekly pacing in-browser and rebalance salary, rent, business, and stress numbers if the new cadence feels too harsh or too soft.
-- Consider making schedule choice even more explicit next: visible weekly calendar blocks, part-time/full-time toggles, and side-job churn events.
-- If the overview still feels busy, reduce copy and collapse low-priority metrics before adding more systems.
-- Consider margin accounts or richer credit-card behavior later if the finance layer needs another step.
+- Add deeper browser coverage for subtab switching itself. The shared Playwright client can validate the new UI state export already, but a richer direct Playwright pass would let us click specific subtabs and filters instead of only validating defaults plus week advancement.
+- Add a direct browser check for the Banking `Debt` subtab empty state once we have a richer subtab-click harness; current validation proves the debt-free opener through exported state and default-screen rendering, but not through an automated Debt-subtab click.
+- Decide whether the hints dock should reserve more horizontal space or collapse automatically after first use on desktop. It is hideable now, but it still occupies a meaningful part of the right edge visually.
+- Consider richer market interactions next: subtab-level validation for `Watchlist`, `News`, and `Exchange`, plus maybe a symbol detail modal or larger focus chart interaction if the market needs more depth.
+- If the new themed shells feel too wordy, cut more explanatory body copy now that the IA is doing more of the organizational work.
+- The Personal section currently focuses on active recovery and social/leisure stabilization. If it proves fun, the next good extension is low-stakes hobby or routine chains that add flavor without turning downtime into another income engine.

@@ -124,7 +124,7 @@ export function SidePanel({ state, dispatch }: SideProps) {
             <span className="panel-kicker">Player</span>
             <h2>Condition</h2>
           </div>
-          <p>Health, energy, stress, and daily setup determine how rough the next week is likely to be.</p>
+          <p>Health, energy, stress, and your baseline setup determine how rough this week is likely to feel.</p>
         </div>
 
         <div className="condition-grid">
@@ -161,7 +161,7 @@ export function SidePanel({ state, dispatch }: SideProps) {
             <span className="panel-kicker">Finance</span>
             <h2>Pressure</h2>
           </div>
-          <p>The overview should answer one question quickly: can you survive the next week without panicking?</p>
+          <p>The overview should answer one question quickly: can you survive this week without panicking?</p>
         </div>
 
         <MetricRows items={coreFinance} />

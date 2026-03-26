@@ -1,6 +1,14 @@
 import { BASE_MARKET } from '../../features/market/data'
-import type { GameState } from './types'
+import type { GameState, MarketHistoryPoint } from './types'
 import { STORAGE_KEY } from './storageKey'
+
+function createFallbackHistoryPoint(price: number, fallback: GameState): MarketHistoryPoint {
+  return {
+    week: fallback.week,
+    month: fallback.month,
+    price,
+  }
+}
 
 export function persistState(state: GameState) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
@@ -28,6 +36,29 @@ export function hydrateState(fallback: GameState) {
           ...item,
           week: item.week ?? fallback.week,
         })) ?? fallback.marketNews,
+      marketHistory:
+        parsed.marketHistory && Object.keys(parsed.marketHistory).length > 0
+          ? Object.fromEntries(
+              BASE_MARKET.map((stock) => {
+                const points = parsed.marketHistory?.[stock.symbol]
+                return [
+                  stock.symbol,
+                  points?.length
+                    ? points.map((point) => ({
+                        week: point.week ?? fallback.week,
+                        month: point.month ?? fallback.month,
+                        price: point.price ?? stock.price,
+                      }))
+                    : [createFallbackHistoryPoint(parsed.market?.find((item) => item.symbol === stock.symbol)?.price ?? stock.price, fallback)],
+                ]
+              }),
+            )
+          : Object.fromEntries(
+              (parsed.market?.length === BASE_MARKET.length ? parsed.market : fallback.market).map((stock) => [
+                stock.symbol,
+                [createFallbackHistoryPoint(stock.price, fallback)],
+              ]),
+            ),
       bondHoldings: parsed.bondHoldings ?? fallback.bondHoldings,
       debtAccounts:
         parsed.debtAccounts?.map((account) => ({
@@ -90,6 +121,7 @@ export function hydrateState(fallback: GameState) {
       transportTier: parsed.transportTier ?? fallback.transportTier,
       foodTier: parsed.foodTier ?? fallback.foodTier,
       wellnessTier: parsed.wellnessTier ?? fallback.wellnessTier,
+      personalActionsUsedThisWeek: parsed.personalActionsUsedThisWeek ?? fallback.personalActionsUsedThisWeek,
       sideJobIds:
         parsed.sideJobIds ??
         ((parsed as Partial<GameState> & { sideJobId?: string | null }).sideJobId

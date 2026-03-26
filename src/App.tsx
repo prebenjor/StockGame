@@ -5,6 +5,7 @@ import { BankingPanel } from './features/banking/BankingPanel'
 import { BusinessPanel } from './features/business/BusinessPanel'
 import { CareerPanel } from './features/career/CareerPanel'
 import { GIGS, SIDE_JOB_MAP } from './features/career/data'
+import { HintsDock } from './components/HintsDock'
 import { HeroPanel } from './features/dashboard/HeroPanel'
 import { SidePanel, SummaryStats } from './features/dashboard/OverviewPanels'
 import { EducationPanel } from './features/education/EducationPanel'
@@ -12,12 +13,15 @@ import { LedgerPanel } from './features/ledger/LedgerPanel'
 import { LifestylePanel } from './features/lifestyle/LifestylePanel'
 import { MarketPanel } from './features/market/MarketPanel'
 import { NetworkPanel } from './features/network/NetworkPanel'
+import { PersonalPanel } from './features/personal/PersonalPanel'
+import { PERSONAL_ACTIONS } from './features/personal/data'
 import { PropertyPanel } from './features/property/PropertyPanel'
 import { money } from './game/core/format'
 import { getCurrentJob, getTips, getWeeklyRunway } from './game/core/selectors'
 import { gameReducer, loadState } from './game/core/reducer'
 import { persistState } from './game/core/storage'
 import { canOpenCreditCard, canRunGig, canTakeSideJob, getCreditCardAccount, getCreditUtilization, getNetWorth, getPassiveIncomePreview, getTradingFee } from './game/core/utils'
+import { SECTION_THEMES } from './ui/sectionThemes'
 
 declare global {
   interface Window {
@@ -31,6 +35,7 @@ type ViewId =
   | 'career'
   | 'education'
   | 'lifestyle'
+  | 'personal'
   | 'banking'
   | 'market'
   | 'property'
@@ -39,16 +44,17 @@ type ViewId =
   | 'ledger'
 
 const VIEWS: Array<{ id: ViewId; label: string; kicker: string; accent: string; accentSoft: string; glow: string }> = [
-  { id: 'overview', label: 'Overview', kicker: 'Run state', accent: '#cf7a18', accentSoft: 'rgba(255, 214, 150, 0.68)', glow: 'rgba(231, 143, 31, 0.24)' },
-  { id: 'career', label: 'Career', kicker: 'Jobs and gigs', accent: '#9e5d1e', accentSoft: 'rgba(233, 196, 154, 0.72)', glow: 'rgba(174, 101, 31, 0.2)' },
-  { id: 'education', label: 'Education', kicker: 'Skills and study', accent: '#346f8f', accentSoft: 'rgba(176, 214, 233, 0.7)', glow: 'rgba(57, 120, 160, 0.2)' },
-  { id: 'lifestyle', label: 'Lifestyle', kicker: 'Living conditions', accent: '#51773d', accentSoft: 'rgba(193, 224, 172, 0.72)', glow: 'rgba(95, 148, 64, 0.2)' },
-  { id: 'banking', label: 'Banking', kicker: 'Cash and debt', accent: '#145c55', accentSoft: 'rgba(167, 222, 213, 0.72)', glow: 'rgba(25, 128, 118, 0.2)' },
-  { id: 'market', label: 'Market', kicker: 'Stocks and ETFs', accent: '#1d6a8a', accentSoft: 'rgba(169, 216, 237, 0.72)', glow: 'rgba(35, 128, 171, 0.22)' },
-  { id: 'property', label: 'Property', kicker: 'Buildings and rent', accent: '#7b4f95', accentSoft: 'rgba(214, 192, 231, 0.72)', glow: 'rgba(124, 83, 162, 0.2)' },
-  { id: 'business', label: 'Business', kicker: 'Operators', accent: '#974545', accentSoft: 'rgba(239, 194, 194, 0.72)', glow: 'rgba(171, 82, 82, 0.2)' },
-  { id: 'network', label: 'Network', kicker: 'Contacts and rivals', accent: '#a44e2f', accentSoft: 'rgba(242, 202, 179, 0.72)', glow: 'rgba(196, 101, 57, 0.2)' },
-  { id: 'ledger', label: 'Ledger', kicker: 'Reports and history', accent: '#5f5a8e', accentSoft: 'rgba(206, 202, 236, 0.72)', glow: 'rgba(103, 96, 173, 0.2)' },
+  { id: 'overview', label: 'Overview', kicker: 'Run state', ...SECTION_THEMES.overview },
+  { id: 'career', label: 'Career', kicker: 'Jobs and gigs', ...SECTION_THEMES.career },
+  { id: 'education', label: 'Education', kicker: 'Skills and study', ...SECTION_THEMES.education },
+  { id: 'lifestyle', label: 'Lifestyle', kicker: 'Living conditions', ...SECTION_THEMES.lifestyle },
+  { id: 'personal', label: 'Personal', kicker: 'Recovery and leisure', ...SECTION_THEMES.personal },
+  { id: 'banking', label: 'Banking', kicker: 'Cash and debt', ...SECTION_THEMES.banking },
+  { id: 'market', label: 'Market', kicker: 'Stocks and ETFs', ...SECTION_THEMES.market },
+  { id: 'property', label: 'Property', kicker: 'Buildings and rent', ...SECTION_THEMES.property },
+  { id: 'business', label: 'Business', kicker: 'Operators', ...SECTION_THEMES.business },
+  { id: 'network', label: 'Network', kicker: 'Contacts and rivals', ...SECTION_THEMES.network },
+  { id: 'ledger', label: 'Ledger', kicker: 'Reports and history', ...SECTION_THEMES.ledger },
 ]
 
 function App() {
@@ -71,6 +77,7 @@ function App() {
   }, [activeView])
 
   const currentJob = getCurrentJob(state)
+  const activeTheme = SECTION_THEMES[activeView]
 
   const setViewByIndex = (index: number) => {
     const nextIndex = (index + VIEWS.length) % VIEWS.length
@@ -170,7 +177,13 @@ function App() {
 
       if (event.key === '0') {
         event.preventDefault()
-        selectView(VIEWS.length - 1)
+        selectView(9)
+        return
+      }
+
+      if (event.key === '-') {
+        event.preventDefault()
+        selectView(10)
         return
       }
 
@@ -193,6 +206,37 @@ function App() {
             const recommendedSideJob = SIDE_JOB_MAP['delivery-route']
             if (recommendedSideJob && !latestState.sideJobIds.includes(recommendedSideJob.id) && canTakeSideJob(latestState, recommendedSideJob)) {
               dispatch({ type: 'TAKE_SIDE_JOB', sideJobId: recommendedSideJob.id })
+            }
+          }
+          return
+        }
+
+        if (latestView === 'personal') {
+          const getAvailablePersonalAction = (categories: Array<'recovery' | 'leisure' | 'social'>, preferredIds: string[]) =>
+            preferredIds
+              .map((id) =>
+                PERSONAL_ACTIONS.find(
+                  (action) =>
+                    action.id === id &&
+                    categories.includes(action.category) &&
+                    latestState.actionPoints >= action.actionCost &&
+                    latestState.cash >= action.cashCost &&
+                    !latestState.personalActionsUsedThisWeek.includes(action.id),
+                ),
+              )
+              .find(Boolean)
+
+          if (key === 'a') {
+            const recoveryAction = getAvailablePersonalAction(['recovery'], ['sleep-in', 'nature-walk', 'stay-in'])
+            if (recoveryAction) {
+              dispatch({ type: 'RUN_PERSONAL_ACTION', personalActionId: recoveryAction.id })
+            }
+          }
+
+          if (key === 'b') {
+            const socialAction = getAvailablePersonalAction(['social', 'leisure'], ['community-dinner', 'call-family', 'meet-friend', 'cheap-treat'])
+            if (socialAction) {
+              dispatch({ type: 'RUN_PERSONAL_ACTION', personalActionId: socialAction.id })
             }
           }
           return
@@ -267,15 +311,21 @@ function App() {
     window.render_game_to_text = () => {
       const latestState = stateRef.current
       const latestActiveView = activeViewRef.current
+      const activeSection = document.querySelector<HTMLElement>('#main-content [data-ui-section]')
+      const toolbarSummary = activeSection?.dataset.toolbarSummary
+      const selectedSymbol = activeSection?.dataset.selectedSymbol
+      const activeSubtab = activeSection?.dataset.activeSubtab
+      const marketHistoryPoints = selectedSymbol ? latestState.marketHistory[selectedSymbol] ?? [] : []
       const latestJob = getCurrentJob(latestState)
       const latestRunway = getWeeklyRunway(latestState)
       const creditCard = getCreditCardAccount(latestState)
       const creditUtilization = getCreditUtilization(latestState)
       const snapshot = {
-        coordinateSystem: 'No spatial coordinates. This is a UI-driven management sim with views indexed left-to-right from 0 to 9.',
+        coordinateSystem: 'No spatial coordinates. This is a UI-driven management sim with views indexed left-to-right from 0 to 10.',
         mode: 'management-sim',
         activeView: latestActiveView,
         activeViewIndex: VIEWS.findIndex((view) => view.id === latestActiveView),
+        activeSubtab: activeSubtab ?? null,
         timeline: {
           week: latestState.week,
           month: latestState.month,
@@ -286,15 +336,17 @@ function App() {
           left: 'Previous section',
           right: 'Next section',
           space: 'Advance one week',
-          digits: 'Jump to section 1-0',
+          digits: 'Jump to sections 1-0, then - for the final section',
           a: 'Context action A for the current section',
           b: 'Context action B for the current section',
         },
         player: {
           currentJob: latestJob.title,
           sideJobs: latestState.sideJobIds.map((id) => SIDE_JOB_MAP[id]?.title ?? id),
+          openDays: latestState.actionPoints,
           actionPoints: latestState.actionPoints,
           bankAccount: latestState.bankAccount,
+          personalActionsUsedThisWeek: latestState.personalActionsUsedThisWeek.map((id) => PERSONAL_ACTIONS.find((action) => action.id === id)?.title ?? id),
         },
         finance: {
           cash: money(latestState.cash),
@@ -334,6 +386,12 @@ function App() {
           stockHoldings: Object.keys(latestState.holdings).length,
           bondHoldings: latestState.bondHoldings.length,
           watchlist: latestState.watchlist,
+          selectedMarketSymbol: selectedSymbol ?? null,
+          selectedMarketHistory: marketHistoryPoints.slice(-12).map((point) => ({
+            week: point.week,
+            month: point.month,
+            price: point.price,
+          })),
           holdings: latestState.market
             .filter((stock) => latestState.holdings[stock.symbol])
             .map((stock) => ({
@@ -343,6 +401,9 @@ function App() {
             })),
         },
         opportunities: latestState.opportunities.slice(0, 3).map((opportunity) => opportunity.title),
+        ui: {
+          toolbarSummary: toolbarSummary ?? null,
+        },
         recentLog: latestState.log.slice(0, 3).map((entry) => ({
           title: entry.title,
           tone: entry.tone,
@@ -383,6 +444,7 @@ function App() {
     if (activeView === 'career') return <CareerPanel state={state} dispatch={dispatch} />
     if (activeView === 'education') return <EducationPanel state={state} dispatch={dispatch} />
     if (activeView === 'lifestyle') return <LifestylePanel state={state} dispatch={dispatch} />
+    if (activeView === 'personal') return <PersonalPanel state={state} dispatch={dispatch} />
     if (activeView === 'banking') return <BankingPanel state={state} dispatch={dispatch} />
     if (activeView === 'market') return <MarketPanel state={state} dispatch={dispatch} />
     if (activeView === 'property') return <PropertyPanel state={state} dispatch={dispatch} />
@@ -392,7 +454,18 @@ function App() {
   }
 
   return (
-    <div className="app-shell" data-active-view={activeView}>
+    <div
+      className="app-shell"
+      data-active-view={activeView}
+      style={
+        {
+          '--active-section-accent': activeTheme.accent,
+          '--active-section-soft': activeTheme.accentSoft,
+          '--active-section-glow': activeTheme.glow,
+          '--active-section-panel': activeTheme.panelTint,
+        } as React.CSSProperties
+      }
+    >
       <a className="skip-link" href="#main-content">
         Skip to active section
       </a>
@@ -440,6 +513,8 @@ function App() {
       >
         {renderActiveView()}
       </main>
+
+      <HintsDock />
     </div>
   )
 }

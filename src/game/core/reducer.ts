@@ -3,6 +3,7 @@ import { COURSE_MAP, GIG_MAP, JOB_MAP, SIDE_JOB_MAP, UPGRADE_MAP } from '../../f
 import { EDUCATION_PROGRAM_MAP } from '../../features/education/data'
 import { BUSINESS_MAP } from '../../features/business/data'
 import { BASE_MARKET } from '../../features/market/data'
+import { PERSONAL_ACTION_MAP } from '../../features/personal/data'
 import { PROPERTIES, PROPERTY_MAP, TENANT_PROFILES, TENANT_PROFILE_MAP } from '../../features/property/data'
 import { CONTACTS, DISTRICTS, DISTRICT_MAP, FOOD_SURVIVAL_EVENTS, HOUSING_SURVIVAL_EVENTS, LIFE_EVENTS, MONTHLY_EVENTS, RIVALS, SHARED_HOUSING_EVENTS, STARTER_BREAK_EVENTS, TRANSPORT_SURVIVAL_EVENTS } from '../../features/world/data'
 import { money } from './format'
@@ -33,6 +34,35 @@ function applyConditionShift(state: GameState, shift: Partial<Pick<GameState, 's
     energy: clamp(state.energy + (shift.energy ?? 0), 0, 100),
     reputation: clamp(state.reputation + (shift.reputation ?? 0), 0, 999),
   }
+}
+
+function getPersonalActionShift(state: GameState, action: keyof typeof PERSONAL_ACTION_MAP | string) {
+  const personalAction = PERSONAL_ACTION_MAP[action]
+  if (!personalAction) return null
+
+  let stress = personalAction.effects.stress ?? 0
+  let energy = personalAction.effects.energy ?? 0
+  let health = personalAction.effects.health ?? 0
+  const reputation = personalAction.effects.reputation ?? 0
+
+  if (state.wellnessTier === 'stretch' || state.wellnessTier === 'gym') {
+    energy += 1
+    health += 1
+  }
+
+  if (state.wellnessTier === 'therapy') {
+    stress -= 2
+  }
+
+  if (state.housingTier === 'shelter' && stress < 0) {
+    stress = Math.min(-1, stress + 2)
+  }
+
+  if (state.foodTier === 'skip-meals' && energy > 0) {
+    energy = Math.max(0, energy - 2)
+  }
+
+  return { stress, energy, health, reputation }
 }
 
 function canBuyCourse(state: GameState, course: Course) {
@@ -130,6 +160,40 @@ function createMarketNews(week: number, month: number, symbol: string, title: st
     detail,
     tone,
   }
+}
+
+function createMarketHistoryFromMarket(market: GameState['market'], week: number, month: number) {
+  return Object.fromEntries(
+    market.map((stock) => [
+      stock.symbol,
+      [
+        {
+          week,
+          month,
+          price: stock.price,
+        },
+      ],
+    ]),
+  )
+}
+
+function appendMarketHistory(state: Pick<GameState, 'marketHistory'>, market: GameState['market'], week: number, month: number) {
+  return Object.fromEntries(
+    market.map((stock) => {
+      const current = state.marketHistory[stock.symbol] ?? []
+      return [
+        stock.symbol,
+        [
+          ...current,
+          {
+            week,
+            month,
+            price: stock.price,
+          },
+        ].slice(-52),
+      ]
+    }),
+  )
 }
 
 function syncDebtState(state: GameState) {
@@ -435,18 +499,6 @@ function assignTenantProfile(property: Pick<GameState['properties'][number], 'te
 
 export function createInitialState(): GameState {
   const districtStates = createDistrictStates()
-  const initialDebtAccounts: DebtAccount[] = [
-    {
-      uid: 'debt-1',
-      kind: 'survival',
-      label: 'Survival arrears',
-      principal: 720,
-      monthlyRate: 0.029,
-      minimumPayment: 60,
-      delinquentMonths: 0,
-      securedPropertyUid: null,
-    },
-  ]
   return {
     week: 1,
     weekOfMonth: 1,
@@ -455,7 +507,7 @@ export function createInitialState(): GameState {
     actionPoints: 3,
     cash: 0,
     savingsBalance: 0,
-    debt: 720,
+    debt: 0,
     taxDue: 0,
     complianceScore: 72,
     economyPhase: 'fragile',
@@ -476,6 +528,7 @@ export function createInitialState(): GameState {
     transportTier: 'foot',
     foodTier: 'skip-meals',
     wellnessTier: 'none',
+    personalActionsUsedThisWeek: [],
     jobId: 'night-cleaning',
     sideJobIds: [],
     certifications: [],
@@ -494,8 +547,9 @@ export function createInitialState(): GameState {
         'neutral',
       ),
     ],
+    marketHistory: createMarketHistoryFromMarket(BASE_MARKET, 1, 1),
     bondHoldings: [],
-    debtAccounts: initialDebtAccounts,
+    debtAccounts: [],
     districtStates,
     propertyListings: generatePropertyListings({ month: 1, districtStates, rivals: createRivals() }),
     contacts: createContacts(),
@@ -505,7 +559,7 @@ export function createInitialState(): GameState {
     properties: [],
     businesses: [],
     nextBondId: 1,
-    nextDebtId: 2,
+    nextDebtId: 1,
     nextBusinessId: 1,
     nextPropertyId: 1,
     history: [],
@@ -515,7 +569,7 @@ export function createInitialState(): GameState {
         week: 1,
         month: 1,
         title: 'Fresh start',
-        detail: 'You are 18, fresh out of high school, with no cash, unstable housing, no bank account, and just enough work access to begin climbing from a rough starting position.',
+        detail: 'You are 18, fresh out of high school, broke, unbanked, and living with fragile basics, but you are not already in debt. The pressure now is staying stable long enough to build a buffer.',
         tone: 'neutral',
       },
     ],
@@ -640,6 +694,42 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       ),
       'Starter card approved',
       `The bank approved a starter card with a ${money(creditLimit)} limit. It can smooth bad months, but high utilization will hammer your score.`,
+      'good',
+    )
+  }
+
+  if (action.type === 'RUN_PERSONAL_ACTION') {
+    const personalAction = PERSONAL_ACTION_MAP[action.personalActionId]
+    if (!personalAction) return state
+    if (state.actionPoints < personalAction.actionCost) return state
+    if (state.cash < personalAction.cashCost) return state
+    if (personalAction.oncePerWeek && state.personalActionsUsedThisWeek.includes(personalAction.id)) return state
+
+    const shift = getPersonalActionShift(state, personalAction.id)
+    if (!shift) return state
+
+    let nextState = applyConditionShift(
+      {
+        ...state,
+        actionPoints: state.actionPoints - personalAction.actionCost,
+        cash: state.cash - personalAction.cashCost,
+        personalActionsUsedThisWeek: [...state.personalActionsUsedThisWeek, personalAction.id],
+      },
+      shift,
+    )
+
+    if (personalAction.contactId) {
+      nextState = adjustContact(nextState, personalAction.contactId, 1)
+    }
+
+    if (personalAction.storyFlag) {
+      nextState = addStoryFlag(nextState, personalAction.storyFlag)
+    }
+
+    return pushLog(
+      nextState,
+      personalAction.title,
+      `${personalAction.description} It cost ${money(personalAction.cashCost)} and used ${personalAction.actionCost} open day${personalAction.actionCost > 1 ? 's' : ''}.`,
       'good',
     )
   }
@@ -1528,6 +1618,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       month: isMonthEnd ? state.month + 1 : state.month,
       ageMonths: isMonthEnd ? state.ageMonths + 1 : state.ageMonths,
       actionPoints: 3,
+      personalActionsUsedThisWeek: [],
       savingsBalance: state.savingsBalance,
       economyPhase: nextPhase,
       inflation: nextInflation,
@@ -1539,6 +1630,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       holdings: { ...state.holdings },
       watchlist: [...state.watchlist],
       marketNews: [...state.marketNews],
+      marketHistory: Object.fromEntries(Object.entries(state.marketHistory).map(([symbol, points]) => [symbol, [...points]])),
       bondHoldings: state.bondHoldings.map((holding) => ({ ...holding })),
       debtAccounts: state.debtAccounts.map((account) => ({ ...account })),
       districtStates: nextDistrictStates,
@@ -1821,6 +1913,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         )
       }
     })
+    nextState.marketHistory = appendMarketHistory(nextState, nextState.market, nextState.week, nextState.month)
     nextState.marketNews = [...monthNews.slice(0, 6), ...nextState.marketNews].slice(0, 18)
 
     nextState.bondHoldings = nextState.bondHoldings

@@ -70,6 +70,8 @@ export type WellnessTier = 'none' | 'stretch' | 'gym' | 'therapy'
 
 export type LifestyleCategory = 'housing' | 'transport' | 'food' | 'wellness'
 
+export type PersonalActionCategory = 'recovery' | 'leisure' | 'social'
+
 export type DebtKind = 'survival' | 'microloan' | 'mortgage' | 'tax' | 'overdraft' | 'student' | 'credit-card' | 'business-loan'
 
 export type PropertyTemplate = MediaAsset & {
@@ -247,6 +249,30 @@ export type MarketNews = {
   tone: Tone
 }
 
+export type MarketHistoryPoint = {
+  week: number
+  month: number
+  price: number
+}
+
+export type PersonalAction = MediaAsset & {
+  id: string
+  title: string
+  category: PersonalActionCategory
+  cashCost: number
+  actionCost: number
+  description: string
+  oncePerWeek: boolean
+  effects: {
+    stress?: number
+    energy?: number
+    health?: number
+    reputation?: number
+  }
+  contactId?: string
+  storyFlag?: string
+}
+
 export type MonthlySnapshot = {
   month: number
   cash: number
@@ -381,6 +407,7 @@ export type GameState = {
   transportTier: TransportTier
   foodTier: FoodTier
   wellnessTier: WellnessTier
+  personalActionsUsedThisWeek: string[]
   jobId: string
   sideJobIds: string[]
   certifications: string[]
@@ -390,6 +417,7 @@ export type GameState = {
   holdings: Record<string, Holding>
   watchlist: string[]
   marketNews: MarketNews[]
+  marketHistory: Record<string, MarketHistoryPoint[]>
   bondHoldings: BondHolding[]
   debtAccounts: DebtAccount[]
   districtStates: DistrictState[]
@@ -416,6 +444,7 @@ export type GameAction =
   | { type: 'RUN_GIG'; gigId: string }
   | { type: 'OPEN_BANK_ACCOUNT' }
   | { type: 'OPEN_CREDIT_CARD' }
+  | { type: 'RUN_PERSONAL_ACTION'; personalActionId: string }
   | { type: 'SET_LIFESTYLE'; category: LifestyleCategory; tier: HousingTier | TransportTier | FoodTier | WellnessTier }
   | { type: 'DEPOSIT_SAVINGS'; amount: number }
   | { type: 'WITHDRAW_SAVINGS'; amount: number }

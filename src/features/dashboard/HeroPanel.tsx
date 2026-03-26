@@ -31,14 +31,14 @@ export function HeroPanel({ state, currentJob, dispatch }: Props) {
   return (
     <header className="hero-panel">
       <p className="sr-only" aria-live="polite">
-        Week {state.week}, month {state.month}, week slot {state.weekOfMonth}. Current job {currentJob.title}. {weeklyStatus} You have {state.actionPoints} actions left. Housing is {housingLabel}. Banking status is {bankingLabel}. Side work status: {sideWorkLabel}.
+        Week {state.week}, month {state.month}, week slot {state.weekOfMonth}. Current job {currentJob.title}. {weeklyStatus} You have {state.actionPoints} open days left this week. Housing is {housingLabel}. Banking status is {bankingLabel}. Side work status: {sideWorkLabel}.
       </p>
 
       <div className="hero-copy">
         <span className="eyebrow">Street To Skyline</span>
         <h1>Start from zero. Build leverage.</h1>
         <p className="hero-text">
-          You are 18, broke, and unstable. Each week is about staying alive, building a buffer, and choosing which lane to push next.
+          You are 18, broke, unbanked, and running fragile basics. Each week is about staying stable, building a buffer, and choosing where your open days go next.
         </p>
         <div className="hero-meta">
           <span className="meta-pill">{formatAge(state.ageMonths)}</span>
@@ -58,7 +58,6 @@ export function HeroPanel({ state, currentJob, dispatch }: Props) {
             Reset Save
           </button>
         </div>
-        <p className="action-hint">Keyboard: Left/Right switches sections, Space advances a week, 1-0 jumps between tabs, and A/B trigger context actions for automation-friendly play.</p>
       </div>
 
       <div className="hero-side">
@@ -69,7 +68,7 @@ export function HeroPanel({ state, currentJob, dispatch }: Props) {
             <strong>{currentJob.title}</strong>
           </div>
           <div className="hero-stat">
-            <span>Actions left</span>
+            <span>Open days</span>
             <strong>{state.actionPoints}</strong>
           </div>
           <div className="hero-stat">

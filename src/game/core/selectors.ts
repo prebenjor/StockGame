@@ -32,7 +32,7 @@ export function getMilestones(state: GameState) {
     { label: 'Open a bank account', complete: state.bankAccount },
     { label: 'Reach positive weekly runway', complete: getWeeklyRunway(state) >= 0 },
     { label: 'Own your first cashflow asset', complete: state.properties.some((property) => property.rented) || state.businesses.length > 0 || passiveIncome > 0 },
-    { label: 'Become debt free', complete: state.debt <= 0 },
+    { label: 'Build a $500 emergency buffer', complete: state.cash + state.savingsBalance >= 500 },
     { label: 'Build a $50k empire', complete: getNetWorth(state) >= 50000 },
   ]
 }
@@ -41,6 +41,8 @@ export function getTips(state: GameState) {
   const tips: string[] = []
   if (state.month <= 3) tips.push('The first stretch is survival-heavy. Protect energy and cash first, then reach for leverage.')
   if (!state.bankAccount) tips.push('Open a bank account early. The whole game stays possible without it, but fees and loan terms are much worse.')
+  if (state.actionPoints > 0 && state.stress >= 62 && state.personalActionsUsedThisWeek.length === 0) tips.push('You still have open days this week. Use Personal recovery before stress turns into a more expensive spiral.')
+  if (state.actionPoints > 0 && state.health < 45 && state.cash <= 20) tips.push('Cheap Personal actions are a valid stabilizer. A free reset week is better than forcing another bad gig while exhausted.')
   if (!state.educationEnrollment && state.bankAccount && state.reputation >= 1 && state.knowledge < 4) tips.push('Education is now a real long-term system. A slower financed program can be cheaper than brute-forcing every credential in cash.')
   if (state.educationEnrollment) tips.push('An education program is active. It will cut into runway for a few months, but it compounds job access and knowledge once completed.')
   if (state.sideJobIds.length === 0 && state.week <= 8) tips.push('Take a recurring side job once your weekly rhythm can handle it. It is steadier than living entirely off one-off gigs.')
@@ -55,6 +57,7 @@ export function getTips(state: GameState) {
   if (state.watchlist.length === 0) tips.push('Start a watchlist. The market is easier to read when you track a few names instead of staring at every ticker equally.')
   if (!state.market.some((stock) => stock.assetType === 'etf' && state.holdings[stock.symbol])) tips.push('ETFs are now in the market. They are the cleanest bridge between holding cash and taking single-name earnings risk.')
   if (state.properties.length === 0) tips.push('Property is technically open, but the first good timing window usually comes after you stop living month to month.')
+  if (state.debt <= 0 && state.cash + state.savingsBalance < 500) tips.push('You are debt-free at the start, but still fragile. Treat the first $500 cash buffer like your real opening milestone.')
   if (state.debt > 3000) tips.push('High debt compounds against you every month. Chip it down when a good month lands.')
   if (state.taxDue > 1500) tips.push('Your tax bill is stacking up. Start paying it down before filing month forces expensive borrowing.')
   if (getComplianceRisk(state) >= 55) tips.push('Compliance risk is elevated. One review cycle is cheaper than a fine or reputation hit.')
@@ -67,7 +70,7 @@ export function getTips(state: GameState) {
   if (state.businesses.some((business) => business.active && business.condition < 45)) tips.push('One of your businesses is deteriorating. Maintenance is cheaper than a long operational slump.')
   if (state.properties.some((property) => property.rented && property.missedPayments > 0)) tips.push('One of your tenants is already missing rent. Reset that unit before arrears cascade into repairs and vacancy.')
   if (!hasUpgrade(state, 'tenant-crm') && state.properties.length > 0) tips.push('Tenant CRM is one of the best upgrades once you have rent coming in.')
-  if (state.stress > 65) tips.push('Stress is cutting into your recovery. Slow down for a month before the spiral gets expensive.')
+  if (state.stress > 65) tips.push('Stress is cutting into your recovery. Use the Personal tab or improve your baseline lifestyle before the spiral gets expensive.')
   if (state.health < 40) tips.push('Low health will start hurting performance. Protect a little cash for recovery.')
   if (tips.length < 3) tips.push('Use volatility to your advantage: stable dividend names fund riskier stock bets.')
   return tips.slice(0, 4)
