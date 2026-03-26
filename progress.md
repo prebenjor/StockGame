@@ -96,6 +96,23 @@ Original prompt: Build a fun comprehensive browser stock/wealth game where the p
   - `output/web-game-personal-week/state-0.json` shows the new Personal loop at week 2 with `activeView: "personal"`, `activeSubtab: "recovery"`, `personalActionsUsedThisWeek: ["Sleep In"]`, `openDays: 2`, and no debt.
   - The Personal scenario intentionally pressed `A` twice before advancing the week, then once after the week tick. The final exported state confirms the once-per-week guard held and then reset correctly across the weekly rollover.
 - Reviewed `output/web-game-banking-opener-v2/shot-0.png` and `output/web-game-personal-week/shot-0.png`; both render cleanly and no `errors-*.json` files were generated.
+- Reworked the landing `Overview` away from a dashboard/control-room layout and into a smaller `Week Hub`.
+- Removed the embedded full `Ledger` and `Network` panels from the landing screen. Overview is now a routing and decision surface, not a place to operate deep systems directly.
+- The new week hub now focuses on:
+  - one situation / pressure card
+  - condition and open-day state
+  - suggested weekly moves
+  - the current main objective
+  - live openings preview
+  - deep-system jump buttons
+  - a small recent-events strip
+- `render_game_to_text` for the landing screen now reports `activeSubtab: "hub"` with a compact toolbar summary instead of inheriting subtab state from embedded deep-system panels.
+- The top summary row was also reduced into a smaller resource strip (`Cash`, `Runway`, `Debt`, `Buffer`, `Current lane`) so the landing screen reads more like a game hub and less like a KPI wall.
+- Verified the week-hub pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Browser validation for the lighter overview:
+  - `output/web-game-overview-hub/state-0.json` shows `activeView: "overview"` and `activeSubtab: "hub"`.
+  - `output/web-game-overview-hub/shot-0.png` confirmed the top of the screen is materially lighter.
+  - `output/web-game-overview-hub-full/shot-0.png` confirmed the full landing screen now reads as a week hub with fewer modules and clearer choices.
 
 TODO
 - Add deeper browser coverage for subtab switching itself. The shared Playwright client can validate the new UI state export already, but a richer direct Playwright pass would let us click specific subtabs and filters instead of only validating defaults plus week advancement.

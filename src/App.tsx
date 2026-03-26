@@ -431,15 +431,7 @@ function App() {
 
   const renderActiveView = () => {
     if (activeView === 'overview') {
-      return (
-        <div className="dashboard-grid">
-          <SidePanel state={state} dispatch={dispatch} />
-          <div className="dashboard-stack">
-            <LedgerPanel state={state} />
-            <NetworkPanel state={state} dispatch={dispatch} />
-          </div>
-        </div>
-      )
+      return <SidePanel state={state} dispatch={dispatch} onNavigate={(view) => setActiveView(view)} />
     }
     if (activeView === 'career') return <CareerPanel state={state} dispatch={dispatch} />
     if (activeView === 'education') return <EducationPanel state={state} dispatch={dispatch} />
