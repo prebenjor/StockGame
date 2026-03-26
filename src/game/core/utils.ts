@@ -108,8 +108,10 @@ export function getCreditUtilization(state: Pick<GameState, 'debtAccounts'>) {
   return clamp(account.principal / account.creditLimit, 0, 1.5)
 }
 
+export const STARTER_CARD_MIN_CREDIT_SCORE = 445
+
 export function canOpenCreditCard(state: GameState) {
-  return state.bankAccount && !getCreditCardAccount(state) && state.creditScore >= 560 && state.bankTrust >= 14
+  return state.bankAccount && !getCreditCardAccount(state) && state.creditScore >= STARTER_CARD_MIN_CREDIT_SCORE && state.bankTrust >= 14
 }
 
 export function getTaxRate(state: GameState) {

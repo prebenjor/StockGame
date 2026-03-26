@@ -17,7 +17,7 @@ import { money } from './game/core/format'
 import { getCurrentJob, getTips, getWeeklyRunway } from './game/core/selectors'
 import { gameReducer, loadState } from './game/core/reducer'
 import { persistState } from './game/core/storage'
-import { canRunGig, canTakeSideJob, getNetWorth, getPassiveIncomePreview, getTradingFee } from './game/core/utils'
+import { canOpenCreditCard, canRunGig, canTakeSideJob, getCreditCardAccount, getCreditUtilization, getNetWorth, getPassiveIncomePreview, getTradingFee } from './game/core/utils'
 
 declare global {
   interface Window {
@@ -204,8 +204,31 @@ function App() {
             return
           }
 
-          if (latestView === 'banking' && latestState.bankAccount && latestState.cash >= 250) {
-            dispatch({ type: 'DEPOSIT_SAVINGS', amount: 250 })
+          if (latestView === 'banking') {
+            const creditCard = getCreditCardAccount(latestState)
+
+            if (!creditCard && canOpenCreditCard(latestState)) {
+              dispatch({ type: 'OPEN_CREDIT_CARD' })
+              return
+            }
+
+            if (creditCard && creditCard.principal > 0 && latestState.cash >= Math.min(250, Math.ceil(creditCard.principal))) {
+              dispatch({ type: 'REPAY_DEBT', amount: 250 })
+              return
+            }
+
+            if (latestState.bankAccount && latestState.cash >= 250) {
+              dispatch({ type: 'DEPOSIT_SAVINGS', amount: 250 })
+            }
+          }
+          return
+        }
+
+        if (latestView === 'banking' && key === 'b') {
+          const creditCard = getCreditCardAccount(latestState)
+          const availableCredit = creditCard?.creditLimit ? Math.max(0, creditCard.creditLimit - creditCard.principal) : 0
+          if (creditCard && availableCredit >= 250) {
+            dispatch({ type: 'CHARGE_CREDIT_CARD', amount: 250 })
           }
           return
         }
@@ -246,6 +269,8 @@ function App() {
       const latestActiveView = activeViewRef.current
       const latestJob = getCurrentJob(latestState)
       const latestRunway = getWeeklyRunway(latestState)
+      const creditCard = getCreditCardAccount(latestState)
+      const creditUtilization = getCreditUtilization(latestState)
       const snapshot = {
         coordinateSystem: 'No spatial coordinates. This is a UI-driven management sim with views indexed left-to-right from 0 to 9.',
         mode: 'management-sim',
@@ -278,6 +303,13 @@ function App() {
           weeklyRunway: money(latestRunway),
           passiveIncomeMonthly: money(getPassiveIncomePreview(latestState)),
           netWorth: money(getNetWorth(latestState)),
+          creditCard: creditCard
+            ? {
+                balance: money(creditCard.principal),
+                limit: money(creditCard.creditLimit ?? 0),
+                utilization: `${(creditUtilization * 100).toFixed(0)}%`,
+              }
+            : null,
         },
         condition: {
           health: latestState.health,

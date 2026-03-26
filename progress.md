@@ -46,11 +46,18 @@ Original prompt: Build a fun comprehensive browser stock/wealth game where the p
 - Verified the richer browser loop with the shared client and captured `output/web-game-build-up/shot-0.png` plus `state-0.json`, then `output/web-game-full-loop/shot-0.png` plus `state-0.json`, again with no error files generated.
 - The validated setup flow now reaches a banked state with `Scheduled Delivery Route` active, `YIELD` added to the watchlist, and 1 share of `CITY` purchased before the first week ends.
 - The validated full-loop follow-up advances to week 2 while preserving the bank account, side job, watchlist expansion, and `CITY` holding. Cash rose to `$214`, debt stepped down to `$710`, and the overview screenshot matched the exported state.
+- Reworked the starter-credit path so the first card is actually a starter product instead of a late-midgame unlock. Minimum score is now `445` with trust `14`, which lets a clean early run reach approval after a couple of stable weeks instead of dozens.
+- Banking automation now owns the whole card lifecycle: in the banking view `A` can open the starter card or repay debt depending on state, and `B` can charge the card when capacity exists.
+- `render_game_to_text` now exports explicit card balance, limit, and utilization so browser validation can prove approval, draw, and paydown behavior directly.
+- Banking UI now exposes stable ids for starter-card open, charge, and repayment buttons in addition to the earlier account/open selectors.
+- Added `playwright-scenario-credit-charge.json` and `playwright-scenario-credit-repay.json` for approval + utilization and approval + repayment coverage.
+- Verified the credit loop with the shared Playwright client. `output/web-game-credit-charge/state-0.json` reached week 3 with a live card at `$260 / $700` and `37%` utilization. `output/web-game-credit-repay/state-0.json` reached week 4 with the card paid back down to `$1 / $700` and utilization effectively `0%`.
+- No Playwright error files were generated during the credit-card validation runs.
 
 TODO
 - Verify the new debt-product flow interactively in browser now that the hooks and Playwright setup exist.
 - Verify ETF/watchlist/news flow interactively in browser now that the hooks and Playwright setup exist.
-- Add one more automation path that opens a credit card once the score/trust threshold is met, then verify charge + repayment behavior in the exported state.
+- Extend the credit automation one step further with a deliberate carry-balance scenario so utilization penalties and score changes are also validated over multiple weeks.
 - Verify weekly pacing in-browser and rebalance salary, rent, business, and stress numbers if the new cadence feels too harsh or too soft.
 - Consider making schedule choice even more explicit next: visible weekly calendar blocks, part-time/full-time toggles, and side-job churn events.
 - If the overview still feels busy, reduce copy and collapse low-priority metrics before adding more systems.

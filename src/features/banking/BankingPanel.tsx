@@ -1,6 +1,6 @@
 import { BONDS, BOND_MAP } from './data'
 import { money } from '../../game/core/format'
-import { getBondValue, getBondYield, getCreditCardAccount, getCreditUtilization, getDebtService, getSavingsRate } from '../../game/core/utils'
+import { getBondValue, getBondYield, getCreditCardAccount, getCreditUtilization, getDebtService, getSavingsRate, STARTER_CARD_MIN_CREDIT_SCORE } from '../../game/core/utils'
 import type { GameAction, GameState } from '../../game/core/types'
 import { CardMedia } from '../../components/CardMedia'
 
@@ -19,9 +19,11 @@ export function BankingPanel({ state, dispatch }: Props) {
   const withdraw250Reason = !state.bankAccount ? 'Open a bank account first' : state.savingsBalance < 250 ? 'Need $250 in savings' : undefined
   const withdraw1000Reason = !state.bankAccount ? 'Open a bank account first' : state.savingsBalance < 1000 ? 'Need $1,000 in savings' : undefined
   const openAccountReason = state.bankAccount ? 'Account already open' : state.actionPoints <= 0 ? 'No actions left this week' : state.cash < 25 ? 'Need $25 cash' : undefined
-  const cardOpenReason = creditCard ? 'Starter card already open' : !state.bankAccount ? 'Open a bank account first' : state.creditScore < 560 ? 'Reach 560 credit score' : state.bankTrust < 14 ? 'Raise bank trust to 14' : undefined
+  const cardOpenReason = creditCard ? 'Starter card already open' : !state.bankAccount ? 'Open a bank account first' : state.creditScore < STARTER_CARD_MIN_CREDIT_SCORE ? `Reach ${STARTER_CARD_MIN_CREDIT_SCORE} credit score` : state.bankTrust < 14 ? 'Raise bank trust to 14' : undefined
   const charge250Reason = !creditCard ? 'Open a starter card first' : availableCredit < 250 ? 'Need $250 available credit' : undefined
   const charge750Reason = !creditCard ? 'Open a starter card first' : availableCredit < 750 ? 'Need $750 available credit' : undefined
+  const repay250Reason = state.cash < 250 || state.debt <= 0 ? 'Need $250 cash and active debt' : undefined
+  const repay1000Reason = state.cash < 1000 || state.debt <= 0 ? 'Need $1,000 cash and active debt' : undefined
 
   return (
     <section className="panel">
@@ -80,14 +82,20 @@ export function BankingPanel({ state, dispatch }: Props) {
                 <button className="mini-button ghost" disabled={!!withdraw1000Reason} onClick={() => dispatch({ type: 'WITHDRAW_SAVINGS', amount: 1000 })} title={withdraw1000Reason}>
                   Withdraw $1,000
                 </button>
-                <button className="mini-button" disabled={!!cardOpenReason} onClick={() => dispatch({ type: 'OPEN_CREDIT_CARD' })} title={cardOpenReason}>
+                <button id="open-starter-card-button" className="mini-button" disabled={!!cardOpenReason} onClick={() => dispatch({ type: 'OPEN_CREDIT_CARD' })} title={cardOpenReason}>
                   {creditCard ? 'Card Open' : 'Open Starter Card'}
                 </button>
-                <button className="mini-button ghost" disabled={!!charge250Reason} onClick={() => dispatch({ type: 'CHARGE_CREDIT_CARD', amount: 250 })} title={charge250Reason}>
+                <button id="charge-credit-card-250-button" className="mini-button ghost" disabled={!!charge250Reason} onClick={() => dispatch({ type: 'CHARGE_CREDIT_CARD', amount: 250 })} title={charge250Reason}>
                   Charge $250
                 </button>
-                <button className="mini-button ghost" disabled={!!charge750Reason} onClick={() => dispatch({ type: 'CHARGE_CREDIT_CARD', amount: 750 })} title={charge750Reason}>
+                <button id="charge-credit-card-750-button" className="mini-button ghost" disabled={!!charge750Reason} onClick={() => dispatch({ type: 'CHARGE_CREDIT_CARD', amount: 750 })} title={charge750Reason}>
                   Charge $750
+                </button>
+                <button id="repay-debt-250-button" className="mini-button ghost" disabled={!!repay250Reason} onClick={() => dispatch({ type: 'REPAY_DEBT', amount: 250 })} title={repay250Reason}>
+                  Repay $250
+                </button>
+                <button id="repay-debt-1000-button" className="mini-button ghost" disabled={!!repay1000Reason} onClick={() => dispatch({ type: 'REPAY_DEBT', amount: 1000 })} title={repay1000Reason}>
+                  Repay $1,000
                 </button>
               </div>
               <p className="action-hint">
@@ -95,7 +103,7 @@ export function BankingPanel({ state, dispatch }: Props) {
                   ? `Account path blocked: ${openAccountReason}.`
                   : cardOpenReason && !creditCard
                   ? `Card path blocked: ${cardOpenReason}.`
-                  : 'Secondary actions: withdraw if you need liquidity, and use credit only as short-term buffer.'}
+                  : 'Secondary actions: open the starter card once your score is ready, use it as short-term liquidity, and pay balances back down before they compound.'}
               </p>
             </div>
           </div>
