@@ -1,21 +1,12 @@
 import { money } from '../../game/core/format'
 import { getLifestyleSwitchCost, getLivingCost } from '../../game/core/utils'
 import type { FoodTier, GameAction, GameState, HousingTier, TransportTier, WellnessTier } from '../../game/core/types'
+import { CardMedia } from '../../components/CardMedia'
 import { FOOD_OPTIONS, HOUSING_OPTIONS, TRANSPORT_OPTIONS, WELLNESS_OPTIONS } from './data'
 
 type Props = {
   state: GameState
   dispatch: React.Dispatch<GameAction>
-}
-
-function CardMedia({ imageUrl, imageAlt }: { imageUrl?: string; imageAlt?: string }) {
-  if (!imageUrl) return null
-
-  return (
-    <div className="card-media">
-      <img src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
-    </div>
-  )
 }
 
 type LifestyleCardProps<T extends HousingTier | TransportTier | FoodTier | WellnessTier> = {
@@ -48,7 +39,7 @@ function LifestyleCard<T extends HousingTier | TransportTier | FoodTier | Wellne
           const switchReason = isCurrent ? 'Already active' : state.cash < switchCost ? `Need ${money(switchCost)} cash` : undefined
           return (
             <div className="lifestyle-option" key={option.id}>
-              <CardMedia imageUrl={option.imageUrl} imageAlt={option.imageAlt} />
+              <CardMedia imageUrl={option.imageUrl} imageAlt={option.imageAlt} fallbackLabel={option.title} size="compact" />
               <div className="card-topline">
                 <strong>{option.title}</strong>
                 <span>{money(option.monthlyCost)}/mo</span>

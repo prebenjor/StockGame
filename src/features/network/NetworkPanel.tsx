@@ -1,21 +1,12 @@
 import { money } from '../../game/core/format'
 import { getContactSummaries, getRivalSummaries } from '../../game/core/selectors'
 import type { GameAction, GameState } from '../../game/core/types'
+import { CardMedia } from '../../components/CardMedia'
 import { CONTACT_MAP, DISTRICT_MAP } from '../world/data'
 
 type Props = {
   state: GameState
   dispatch: React.Dispatch<GameAction>
-}
-
-function CardMedia({ imageUrl, imageAlt }: { imageUrl?: string; imageAlt?: string }) {
-  if (!imageUrl) return null
-
-  return (
-    <div className="card-media">
-      <img src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
-    </div>
-  )
 }
 
 export function NetworkPanel({ state, dispatch }: Props) {
@@ -35,7 +26,7 @@ export function NetworkPanel({ state, dispatch }: Props) {
       <div className="card-grid">
         {contacts.map((contact) => (
           <article className="card" key={contact.contactId}>
-            <CardMedia imageUrl={contact.imageUrl} imageAlt={contact.imageAlt} />
+            <CardMedia imageUrl={contact.imageUrl} imageAlt={contact.imageAlt} fallbackLabel={contact.name} size="compact" />
             <div className="card-topline">
               <h3>{contact.name}</h3>
               <span>{contact.relationship}</span>
@@ -60,7 +51,7 @@ export function NetworkPanel({ state, dispatch }: Props) {
       <div className="card-grid">
         {rivals.map((rival) => (
           <article className="card" key={rival.id}>
-            <CardMedia imageUrl={rival.imageUrl} imageAlt={rival.imageAlt} />
+            <CardMedia imageUrl={rival.imageUrl} imageAlt={rival.imageAlt} fallbackLabel={rival.name} size="compact" />
             <div className="card-topline">
               <h3>{rival.name}</h3>
               <span>{rival.rivalry}</span>
@@ -93,7 +84,12 @@ export function NetworkPanel({ state, dispatch }: Props) {
         ) : (
           state.opportunities.map((opportunity) => (
             <article className="card" key={opportunity.id}>
-              <CardMedia imageUrl={CONTACT_MAP[opportunity.contactId].imageUrl} imageAlt={CONTACT_MAP[opportunity.contactId].imageAlt} />
+              <CardMedia
+                imageUrl={CONTACT_MAP[opportunity.contactId].imageUrl}
+                imageAlt={CONTACT_MAP[opportunity.contactId].imageAlt}
+                fallbackLabel={CONTACT_MAP[opportunity.contactId].name}
+                size="compact"
+              />
               <div className="card-topline">
                 <h3>{opportunity.title}</h3>
                 <span>{CONTACT_MAP[opportunity.contactId].role}</span>

@@ -440,9 +440,9 @@ export function createInitialState(): GameState {
       uid: 'debt-1',
       kind: 'survival',
       label: 'Survival arrears',
-      principal: 900,
+      principal: 720,
       monthlyRate: 0.029,
-      minimumPayment: 90,
+      minimumPayment: 60,
       delinquentMonths: 0,
       securedPropertyUid: null,
     },
@@ -455,7 +455,7 @@ export function createInitialState(): GameState {
     actionPoints: 3,
     cash: 0,
     savingsBalance: 0,
-    debt: 900,
+    debt: 720,
     taxDue: 0,
     complianceScore: 72,
     economyPhase: 'fragile',
@@ -468,9 +468,9 @@ export function createInitialState(): GameState {
     bankTrust: 4,
     reputation: 0,
     knowledge: 0,
-    stress: 62,
-    health: 48,
-    energy: 41,
+    stress: 54,
+    health: 56,
+    energy: 50,
     bankAccount: false,
     housingTier: 'shelter',
     transportTier: 'foot',
@@ -515,7 +515,7 @@ export function createInitialState(): GameState {
         week: 1,
         month: 1,
         title: 'Fresh start',
-        detail: 'You are 18, fresh out of high school, with no cash, unstable housing, no bank account, weak health, and just enough work access to begin climbing.',
+        detail: 'You are 18, fresh out of high school, with no cash, unstable housing, no bank account, and just enough work access to begin climbing from a rough starting position.',
         tone: 'neutral',
       },
     ],
@@ -532,7 +532,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   if (action.type === 'TAKE_JOB') {
     const job = JOB_MAP[action.jobId]
     if (!job || !canTakeJob(state, job)) return state
-    return pushLog(adjustContact(applyConditionShift({ ...state, actionPoints: state.actionPoints - 1, jobId: job.id }, { reputation: 1, stress: 4, energy: -6 }), 'recruiter', 3), 'New day job', `You switched into ${job.title}. Base pay is now ${money(toWeeklyAmount(job.salary))} a week.`, 'good')
+    return pushLog(adjustContact(applyConditionShift({ ...state, actionPoints: state.actionPoints - 1, jobId: job.id }, { reputation: 1, stress: 2, energy: -3 }), 'recruiter', 3), 'New day job', `You switched into ${job.title}. Base pay is now ${money(toWeeklyAmount(job.salary))} a week.`, 'good')
   }
 
   if (action.type === 'TAKE_SIDE_JOB') {
@@ -582,12 +582,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     const conditionHit = gig.id === 'flyers'
-      ? { energy: -8, stress: 4, health: -1, reputation: 1 }
+      ? { energy: -4, stress: 2, health: 0, reputation: 1 }
       : gig.id === 'delivery'
-      ? { energy: -16, stress: 8, health: -2, reputation: 1 }
+      ? { energy: -8, stress: 4, health: -1, reputation: 1 }
       : gig.id === 'freelance'
-        ? { energy: -10, stress: 4, health: 0, reputation: 1 }
-        : { energy: -12, stress: 6, health: -1, reputation: 1 }
+        ? { energy: -5, stress: 2, health: 0, reputation: 1 }
+        : { energy: -6, stress: 3, health: 0, reputation: 1 }
 
     const contactBoost = gig.id === 'repair-callout' ? 'contractor' : gig.id === 'freelance' ? 'recruiter' : gig.id === 'market-stall' ? 'broker' : ''
     const nextState = applyConditionShift({ ...state, actionPoints: state.actionPoints - 1, cash: state.cash + payout, properties }, conditionHit)
@@ -1558,10 +1558,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     const currentSideJobs = state.sideJobIds.map((id) => SIDE_JOB_MAP[id]).filter(Boolean)
     const dividendMultiplier = hasUpgrade(state, 'broker-terminal') ? 1.25 : 1
     const lifestyleShift = getLifestyleConditionShift(state)
-    const healthPenalty = state.health < 35 ? 0.88 : 1
-    const energyPenalty = state.energy < 25 ? 0.92 : 1
-    const stabilityPenalty = hasStableHousing(state) ? 1 : 0.82
-    const bankingPenalty = state.bankAccount ? 1 : 0.95
+    const healthPenalty = state.health < 25 ? 0.94 : 1
+    const energyPenalty = state.energy < 18 ? 0.96 : 1
+    const stabilityPenalty = hasStableHousing(state) ? 1 : 0.92
+    const bankingPenalty = state.bankAccount ? 1 : 0.97
     const educationPenalty = currentEducation ? 0.94 : 1
     const knowledgeBonus = 1 + Math.min(state.knowledge, 12) / 150
     const macroSalaryMultiplier = clamp(1.04 - nextUnemployment / 18 + nextMarketSentiment / 60, 0.72, 1.12)
@@ -1961,14 +1961,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     nextState.cash = Math.round(cash)
     nextState.debt = Math.round(debt)
 
-    let stressShift = 1 + lifestyleShift.stress
-    if (state.debt > 4000) stressShift += 4
-    if (state.cash < 250) stressShift += 3
+    let stressShift = lifestyleShift.stress
+    if (state.debt > 4000) stressShift += 3
+    if (state.cash < 250) stressShift += 1
     if (getPassiveIncomePreview(state) > livingCost) stressShift -= 5
-    if (state.energy < 30) stressShift += 2
-    if (!hasStableHousing(state)) stressShift += 5
-    if (!state.bankAccount) stressShift += 2
-    if (nextPhase === 'recession') stressShift += 4
+    if (state.energy < 30) stressShift += 1
+    if (!hasStableHousing(state)) stressShift += 2
+    if (!state.bankAccount) stressShift += 1
+    if (nextPhase === 'recession') stressShift += 2
     if (nextPhase === 'boom') stressShift -= 2
     stressShift += tenantStress
     stressShift += businessStress
@@ -1976,24 +1976,34 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     stressShift += educationStress
     stressShift += sideJobStress
 
-    let healthShift = (state.stress > 70 ? -6 : state.stress < 35 ? 3 : -1) + lifestyleShift.health
-    if (state.energy < 25) healthShift -= 3
-    if (state.health > 75 && state.stress < 40) healthShift += 1
+    let healthShift = (state.stress > 75 ? -3 : state.stress < 30 ? 2 : 0) + lifestyleShift.health
+    if (state.energy < 20) healthShift -= 1
+    if (state.health > 80 && state.stress < 40) healthShift += 1
 
-    let energyShift = 16 - Math.floor(state.stress / 18) + lifestyleShift.energy
-    if (state.health < 35) energyShift -= 4
-    if (state.cash === 0) energyShift -= 3
+    let energyShift = 10 - Math.floor(state.stress / 24) + lifestyleShift.energy
+    if (state.health < 30) energyShift -= 2
+    if (state.cash === 0) energyShift -= 1
     energyShift -= educationEnergy
     energyShift -= sideJobEnergy
 
     Object.assign(nextState, applyConditionShift(nextState, { stress: stressShift, health: healthShift, energy: energyShift, reputation: tenantReputation + lifestyleShift.reputation }))
 
+    const reboundShift = {
+      stress: nextState.stress >= 85 ? -8 : nextState.stress >= 72 ? -3 : 0,
+      health: nextState.health <= 16 ? 8 : nextState.health <= 28 ? 3 : 0,
+      energy: nextState.energy <= 16 ? 12 : nextState.energy <= 28 ? 4 : 0,
+    }
+    if (reboundShift.stress || reboundShift.health || reboundShift.energy) {
+      Object.assign(nextState, applyConditionShift(nextState, reboundShift))
+      notes.push('You were running on fumes, so your week tilted more toward basic recovery than further collapse.')
+    }
+
     const lifeEventPool = getLifeEventPool(state)
     const lifeEventChance = state.month <= 2 || state.housingTier === 'shelter' || state.foodTier === 'skip-meals'
-      ? 0.32
+      ? 0.14
       : state.stress > 60 || state.health < 45
-        ? 0.24
-        : 0.16
+        ? 0.1
+        : 0.06
     const lifeEvent = Math.random() < lifeEventChance ? randomItem(lifeEventPool) : null
     const stateAfterLife = lifeEvent ? applyLifeEvent(nextState, lifeEvent) : nextState
 

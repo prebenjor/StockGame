@@ -1,6 +1,7 @@
 import { DISTRICT_MAP } from '../world/data'
 import { money } from '../../game/core/format'
 import type { GameAction, GameState } from '../../game/core/types'
+import { CardMedia } from '../../components/CardMedia'
 import { BUSINESSES } from './data'
 import { canBuyBusiness, canTakeBusinessLoan, getBusinessDebtBalance, getBusinessMonthlyProfit, getBusinessValue } from '../../game/core/utils'
 
@@ -25,11 +26,7 @@ export function BusinessPanel({ state, dispatch }: Props) {
           const buyReason = !canBuyBusiness(state, business) ? 'Business not available' : state.cash < business.cost ? `Need ${money(business.cost)} cash` : undefined
           return (
           <article className="card" key={business.id}>
-            {business.imageUrl ? (
-              <div className="card-media">
-                <img src={business.imageUrl} alt={business.imageAlt ?? business.title} loading="lazy" />
-              </div>
-            ) : null}
+            <CardMedia imageUrl={business.imageUrl} imageAlt={business.imageAlt ?? business.title} fallbackLabel={business.title} />
             <div className="card-topline">
               <h3>{business.title}</h3>
               <span>{money(business.cost)}</span>
@@ -114,11 +111,7 @@ export function BusinessPanel({ state, dispatch }: Props) {
             const maintenanceReason = state.actionPoints <= 0 ? 'No actions left this week' : state.cash < 260 ? 'Need $260 cash' : business.condition >= 95 ? 'Condition already high' : undefined
             return (
               <article className="card owned-card" key={business.uid}>
-                {template.imageUrl ? (
-                  <div className="card-media">
-                    <img src={template.imageUrl} alt={template.imageAlt ?? template.title} loading="lazy" />
-                  </div>
-                ) : null}
+                <CardMedia imageUrl={template.imageUrl} imageAlt={template.imageAlt ?? template.title} fallbackLabel={template.title} />
                 <div className="card-topline">
                   <h3>{template.title}</h3>
                   <span>{money(getBusinessValue(business, state))}</span>

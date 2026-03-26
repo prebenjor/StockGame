@@ -1,21 +1,12 @@
 import { EDUCATION_PROGRAMS } from './data'
 import { money } from '../../game/core/format'
 import type { GameAction, GameState } from '../../game/core/types'
+import { CardMedia } from '../../components/CardMedia'
 import { COURSE_MAP } from '../career/data'
 
 type Props = {
   state: GameState
   dispatch: React.Dispatch<GameAction>
-}
-
-function CardMedia({ imageUrl, imageAlt }: { imageUrl?: string; imageAlt?: string }) {
-  if (!imageUrl) return null
-
-  return (
-    <div className="card-media">
-      <img src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
-    </div>
-  )
 }
 
 export function EducationPanel({ state, dispatch }: Props) {
@@ -75,7 +66,7 @@ export function EducationPanel({ state, dispatch }: Props) {
           const loanReason = getLoanReason(program, alreadyOwned)
           return (
             <article className="card" key={program.id}>
-              <CardMedia imageUrl={program.imageUrl} imageAlt={program.imageAlt} />
+              <CardMedia imageUrl={program.imageUrl} imageAlt={program.imageAlt} fallbackLabel={program.title} size="compact" />
               <div className="card-topline">
                 <h3>{program.title}</h3>
                 <span>{money(program.totalCost)}</span>

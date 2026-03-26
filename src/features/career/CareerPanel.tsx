@@ -1,21 +1,12 @@
 import { money } from '../../game/core/format'
 import { canRunGig, canTakeJob, canTakeSideJob, getLockedReason, hasUpgrade, toWeeklyAmount } from '../../game/core/utils'
 import type { GameAction, GameState } from '../../game/core/types'
+import { CardMedia } from '../../components/CardMedia'
 import { COURSES, COURSE_MAP, GIGS, JOBS, SIDE_JOBS, UPGRADES } from './data'
 
 type Props = {
   state: GameState
   dispatch: React.Dispatch<GameAction>
-}
-
-function CardMedia({ imageUrl, imageAlt }: { imageUrl?: string; imageAlt?: string }) {
-  if (!imageUrl) return null
-
-  return (
-    <div className="card-media">
-      <img src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
-    </div>
-  )
 }
 
 function getSideJobReason(state: GameState, sideJob: typeof SIDE_JOBS[number]) {
@@ -62,7 +53,7 @@ export function CareerPanel({ state, dispatch }: Props) {
           const isCurrent = state.jobId === job.id
           return (
             <article className={`card ${isCurrent ? 'current' : ''}`} key={job.id}>
-              <CardMedia imageUrl={job.imageUrl} imageAlt={job.imageAlt} />
+              <CardMedia imageUrl={job.imageUrl} imageAlt={job.imageAlt} fallbackLabel={job.title} size="compact" />
               <div className="card-topline">
                 <h3>{job.title}</h3>
                 <span>{money(toWeeklyAmount(job.salary))}/wk</span>
@@ -107,7 +98,7 @@ export function CareerPanel({ state, dispatch }: Props) {
           const seasonLabel = sideJob.seasonMonths?.join(', ')
           return (
             <article className={`card ${isCurrent ? 'current' : ''}`} key={sideJob.id}>
-              <CardMedia imageUrl={sideJob.imageUrl} imageAlt={sideJob.imageAlt} />
+              <CardMedia imageUrl={sideJob.imageUrl} imageAlt={sideJob.imageAlt} fallbackLabel={sideJob.title} size="compact" />
               <div className="card-topline">
                 <h3>{sideJob.title}</h3>
                 <span>{money(sideJob.weeklyPay)}/wk</span>
@@ -161,7 +152,7 @@ export function CareerPanel({ state, dispatch }: Props) {
           const bonus = gig.id === 'delivery' && hasUpgrade(state, 'scooter') ? ' + Scooter bonus' : gig.id === 'repair-callout' && hasUpgrade(state, 'toolkit') ? ' + Tool kit bonus' : ''
           return (
             <article className="card" key={gig.id}>
-              <CardMedia imageUrl={gig.imageUrl} imageAlt={gig.imageAlt} />
+              <CardMedia imageUrl={gig.imageUrl} imageAlt={gig.imageAlt} fallbackLabel={gig.title} size="compact" />
               <div className="card-topline">
                 <h3>{gig.title}</h3>
                 <span>{money(gig.payout)}</span>
@@ -200,7 +191,7 @@ export function CareerPanel({ state, dispatch }: Props) {
             const reason = getCourseReason(course)
             return (
             <article className="card" key={course.id}>
-              <CardMedia imageUrl={course.imageUrl} imageAlt={course.imageAlt} />
+              <CardMedia imageUrl={course.imageUrl} imageAlt={course.imageAlt} fallbackLabel={course.title} size="compact" />
               <div className="card-topline">
                 <h3>{course.title}</h3>
                 <span>{money(course.cost)}</span>
@@ -225,7 +216,7 @@ export function CareerPanel({ state, dispatch }: Props) {
             const reason = getUpgradeReason(upgrade)
             return (
             <article className="card" key={upgrade.id}>
-              <CardMedia imageUrl={upgrade.imageUrl} imageAlt={upgrade.imageAlt} />
+              <CardMedia imageUrl={upgrade.imageUrl} imageAlt={upgrade.imageAlt} fallbackLabel={upgrade.title} size="compact" />
               <div className="card-topline">
                 <h3>{upgrade.title}</h3>
                 <span>{money(upgrade.cost)}</span>

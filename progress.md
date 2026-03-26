@@ -22,6 +22,12 @@ Original prompt: Build a fun comprehensive browser stock/wealth game where the p
 - Save key bumped again to `street-to-stock-save-v11` because side work moved from one id to an array of scheduled commitments.
 - Added card images across career, education, lifestyle, and network content so jobs, gigs, skills, living-condition options, contacts, rivals, and opportunities all read as more visual systems instead of plain text grids.
 - Shared media metadata now exists on more game content types, and the affected panels render those images through the same card-media pattern already used by property and business cards.
+- Replaced the duplicated per-panel media helpers with one shared `CardMedia` component that now handles load failures cleanly and shows a labeled fallback block instead of a giant broken image area.
+- Tightened default media height and introduced a `compact` media treatment for dense tabs such as lifestyle, career, education, banking, market, and network so images support the text instead of dominating the card.
+- Re-verified after the shared-media pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Rebalanced the weekly opening loop after noticing the week-based conversion was still applying monthly-scale pain in several places.
+- Softened starter lifestyle condition shifts, reduced the early random life-event rate, raised the floor on starter jobs, lowered the shelter/food/foot monthly costs, and made the salary penalty from low health or energy less severe.
+- Starter state is now less physically broken and the survival arrears payment is lighter, so a careful early run can hover near break-even instead of auto-spiraling.
 - Verification passed with `npm run lint`, `npx tsc -b`, and `npm run build`.
 - `npx playwright --version` now works outside the sandbox and reports Playwright `1.58.2`, but the repo still does not expose `render_game_to_text` or `advanceTime`, so the full `develop-web-game` automation loop is still blocked.
 

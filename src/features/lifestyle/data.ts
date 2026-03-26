@@ -14,7 +14,7 @@ export const HOUSING_OPTIONS: LifestyleOption<HousingTier>[] = [
   {
     id: 'shelter',
     title: 'Shelter Bed',
-    monthlyCost: 60,
+    monthlyCost: 45,
     switchCost: 0,
     description: 'Cheap but unstable. Bad sleep, no privacy, and a visible drag on reliability.',
     ...image('https://images.unsplash.com/photo-1514894786521-67f8d7d07c1a?auto=format&fit=crop&w=1200&q=80', 'Simple bunk bed in a sparse room'),
@@ -49,7 +49,7 @@ export const TRANSPORT_OPTIONS: LifestyleOption<TransportTier>[] = [
   {
     id: 'foot',
     title: 'Walk + Bus',
-    monthlyCost: 35,
+    monthlyCost: 20,
     switchCost: 0,
     description: 'Cheapest option, but long commutes and bad weather grind your energy down.',
     ...image('https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1200&q=80', 'City street with buses and pedestrians at dusk'),
@@ -84,7 +84,7 @@ export const FOOD_OPTIONS: LifestyleOption<FoodTier>[] = [
   {
     id: 'skip-meals',
     title: 'Skip Meals',
-    monthlyCost: 90,
+    monthlyCost: 70,
     switchCost: 0,
     description: 'Survival calories only. It keeps cash free at the cost of health and energy.',
     ...image('https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=1200&q=80', 'Sparse cheap meal on a small table'),
@@ -92,7 +92,7 @@ export const FOOD_OPTIONS: LifestyleOption<FoodTier>[] = [
   {
     id: 'cheap-eats',
     title: 'Cheap Eats',
-    monthlyCost: 170,
+    monthlyCost: 145,
     switchCost: 35,
     description: 'Fast food, instant noodles, and not much recovery.',
     ...image('https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=1200&q=80', 'Takeout containers and quick comfort food on a table'),

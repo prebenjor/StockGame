@@ -24,9 +24,9 @@ const SKILL_IMAGES = {
 } as const
 
 export const JOBS: Job[] = [
-  { id: 'night-cleaning', title: 'Night Cleaning Shift', salary: 240, reputationRequired: 0, certifications: [], description: 'Low pay, rough hours, and just enough money to stay in motion.', ...JOB_IMAGES.cleaning },
-  { id: 'odd-jobs', title: 'Odd Jobs Circuit', salary: 420, reputationRequired: 0, certifications: [], description: 'Temp shifts, cleaning gigs, and moving boxes just to stay afloat.', ...JOB_IMAGES.labor },
-  { id: 'cafe', title: 'Cafe Shift Lead', salary: 700, reputationRequired: 2, certifications: [], description: 'Early mornings, steady tips, and a little more structure.', ...JOB_IMAGES.cafe },
+  { id: 'night-cleaning', title: 'Night Cleaning Shift', salary: 340, reputationRequired: 0, certifications: [], description: 'Low pay, rough hours, and just enough money to stay in motion.', ...JOB_IMAGES.cleaning },
+  { id: 'odd-jobs', title: 'Odd Jobs Circuit', salary: 520, reputationRequired: 0, certifications: [], description: 'Temp shifts, cleaning gigs, and moving boxes just to stay afloat.', ...JOB_IMAGES.labor },
+  { id: 'cafe', title: 'Cafe Shift Lead', salary: 760, reputationRequired: 2, certifications: [], description: 'Early mornings, steady tips, and a little more structure.', ...JOB_IMAGES.cafe },
   { id: 'warehouse', title: 'Warehouse Picker', salary: 920, reputationRequired: 3, certifications: [], description: 'Long hours and sore knees, but reliable weekly flow once you lock it in.', ...image('https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=1200&q=80', 'Warehouse aisle with shelves and logistics equipment') },
   { id: 'sales', title: 'Sales Assistant', salary: 1400, reputationRequired: 5, certifications: ['sales-course'], description: 'Commission upside if you can keep a smile on hard days.', ...JOB_IMAGES.sales },
   { id: 'analyst', title: 'Junior Market Analyst', salary: 1900, reputationRequired: 7, certifications: ['finance-cert'], description: 'You finally get paid to read charts instead of just staring at them.', ...JOB_IMAGES.analyst },

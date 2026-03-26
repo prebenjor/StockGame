@@ -1,6 +1,7 @@
 import { money } from '../../game/core/format'
 import { canBuyProperty, getAvailableEquity, getPropertyRent, getPropertyUpkeep, getPropertyValue, getRenovationCost } from '../../game/core/utils'
 import type { GameAction, GameState } from '../../game/core/types'
+import { CardMedia } from '../../components/CardMedia'
 import { PROPERTIES, TENANT_PROFILE_MAP } from './data'
 import { DISTRICT_MAP } from '../world/data'
 
@@ -65,11 +66,7 @@ export function PropertyPanel({ state, dispatch }: Props) {
                   : undefined)
           return (
           <article className="card" key={listing.id}>
-            {property.imageUrl ? (
-              <div className="card-media">
-                <img src={property.imageUrl} alt={property.imageAlt ?? property.title} loading="lazy" />
-              </div>
-            ) : null}
+            <CardMedia imageUrl={property.imageUrl} imageAlt={property.imageAlt ?? property.title} fallbackLabel={property.title} />
             <div className="card-topline">
               <h3>{property.title}</h3>
               <span>{money(listing.askingPrice)}</span>
@@ -139,11 +136,7 @@ export function PropertyPanel({ state, dispatch }: Props) {
             const refiReason = state.creditScore < 640 ? 'Need 640 credit score' : state.bankTrust < 30 ? 'Need 30 bank trust' : getAvailableEquity(property, state) < 500 ? 'Need at least $500 equity' : undefined
             return (
               <article className="card owned-card" key={property.uid}>
-                {template.imageUrl ? (
-                  <div className="card-media">
-                    <img src={template.imageUrl} alt={template.imageAlt ?? template.title} loading="lazy" />
-                  </div>
-                ) : null}
+                <CardMedia imageUrl={template.imageUrl} imageAlt={template.imageAlt ?? template.title} fallbackLabel={template.title} />
                 <div className="card-topline">
                   <h3>{template.title}</h3>
                   <span>{money(getPropertyValue(property, state))}</span>

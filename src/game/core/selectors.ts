@@ -12,10 +12,10 @@ export function getWeeklyRunway(state: GameState) {
   const livingCost = getWeeklyLivingCost(state)
   const debtService = toWeeklyAmount(getDebtService(state))
   const passiveIncome = getWeeklyPassiveIncomePreview(state)
-  const healthPenalty = state.health < 35 ? 0.88 : 1
-  const energyPenalty = state.energy < 25 ? 0.92 : 1
-  const stabilityPenalty = hasStableHousing(state) ? 1 : 0.82
-  const bankingPenalty = state.bankAccount ? 1 : 0.95
+  const healthPenalty = state.health < 25 ? 0.94 : 1
+  const energyPenalty = state.energy < 18 ? 0.96 : 1
+  const stabilityPenalty = hasStableHousing(state) ? 1 : 0.92
+  const bankingPenalty = state.bankAccount ? 1 : 0.97
   const macroSalaryMultiplier = Math.max(0.72, Math.min(1.12, 1.04 - state.unemployment / 18 + state.marketSentiment / 60))
   const estimatedSalary = toWeeklyAmount(Math.round(currentJob.salary * healthPenalty * energyPenalty * stabilityPenalty * bankingPenalty * macroSalaryMultiplier))
   return estimatedSalary + passiveIncome - livingCost - debtService

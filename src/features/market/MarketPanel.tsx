@@ -1,20 +1,11 @@
 import { money, price } from '../../game/core/format'
 import { getTradingFee, hasStableHousing } from '../../game/core/utils'
 import type { GameAction, GameState } from '../../game/core/types'
+import { CardMedia } from '../../components/CardMedia'
 
 type Props = {
   state: GameState
   dispatch: React.Dispatch<GameAction>
-}
-
-function CardMedia({ imageUrl, imageAlt }: { imageUrl?: string; imageAlt?: string }) {
-  if (!imageUrl) return null
-
-  return (
-    <div className="card-media">
-      <img src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
-    </div>
-  )
 }
 
 export function MarketPanel({ state, dispatch }: Props) {
@@ -135,7 +126,7 @@ export function MarketPanel({ state, dispatch }: Props) {
 
           return (
             <article className="card stock-card" key={stock.symbol}>
-              <CardMedia imageUrl={stock.imageUrl} imageAlt={stock.imageAlt} />
+              <CardMedia imageUrl={stock.imageUrl} imageAlt={stock.imageAlt} fallbackLabel={stock.symbol} size="compact" />
               <div className="card-topline">
                 <h3>{stock.symbol}</h3>
                 <span className={stock.change >= 0 ? 'positive' : 'negative'}>

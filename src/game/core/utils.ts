@@ -129,13 +129,13 @@ export function getComplianceRisk(state: GameState) {
 export function getLivingCost(state: GameState) {
   const reserveDiscount = hasUpgrade(state, 'emergency-fund') ? 70 : 0
   const inflation = Math.floor((state.month - 1) / 6) * 16
-  const macroInflation = Math.round(state.inflation * 10)
+  const macroInflation = Math.round(state.inflation * 7)
   const lifestyleBase =
     HOUSING_OPTION_MAP[state.housingTier].monthlyCost +
     TRANSPORT_OPTION_MAP[state.transportTier].monthlyCost +
     FOOD_OPTION_MAP[state.foodTier].monthlyCost +
     WELLNESS_OPTION_MAP[state.wellnessTier].monthlyCost
-  const unbankedPenalty = state.bankAccount ? 0 : 35
+  const unbankedPenalty = state.bankAccount ? 0 : 20
   return lifestyleBase + unbankedPenalty + inflation + macroInflation - reserveDiscount
 }
 
@@ -167,36 +167,36 @@ export function getLifestyleSwitchCost(
 export function getLifestyleConditionShift(state: GameState) {
   const housingShift =
     state.housingTier === 'shelter'
-      ? { stress: 9, health: -6, energy: -8, reputation: -1 }
+      ? { stress: 2, health: -1, energy: -1, reputation: -1 }
       : state.housingTier === 'shared'
-        ? { stress: 2, health: -1, energy: 1, reputation: 0 }
+        ? { stress: 1, health: 0, energy: 1, reputation: 0 }
         : state.housingTier === 'studio'
-          ? { stress: -2, health: 1, energy: 4, reputation: 1 }
-          : { stress: -4, health: 2, energy: 6, reputation: 1 }
+          ? { stress: -1, health: 1, energy: 2, reputation: 1 }
+          : { stress: -2, health: 1, energy: 3, reputation: 1 }
   const transportShift =
     state.transportTier === 'foot'
-      ? { stress: 2, health: 0, energy: -3, reputation: 0 }
+      ? { stress: 1, health: 0, energy: -1, reputation: 0 }
       : state.transportTier === 'bike'
-        ? { stress: 0, health: 1, energy: 1, reputation: 0 }
+        ? { stress: 0, health: 0, energy: 1, reputation: 0 }
         : state.transportTier === 'scooter'
-          ? { stress: -1, health: 0, energy: 2, reputation: 0 }
-          : { stress: -2, health: 0, energy: 3, reputation: 1 }
+          ? { stress: -1, health: 0, energy: 1, reputation: 0 }
+          : { stress: -1, health: 0, energy: 2, reputation: 1 }
   const foodShift =
     state.foodTier === 'skip-meals'
-      ? { stress: 4, health: -7, energy: -6, reputation: 0 }
+      ? { stress: 2, health: -1, energy: -1, reputation: 0 }
       : state.foodTier === 'cheap-eats'
-        ? { stress: 1, health: -2, energy: -1, reputation: 0 }
+        ? { stress: 1, health: 0, energy: 0, reputation: 0 }
         : state.foodTier === 'balanced'
-          ? { stress: -1, health: 2, energy: 3, reputation: 0 }
-          : { stress: -2, health: 4, energy: 4, reputation: 0 }
+          ? { stress: -1, health: 1, energy: 1, reputation: 0 }
+          : { stress: -1, health: 2, energy: 2, reputation: 0 }
   const wellnessShift =
     state.wellnessTier === 'none'
-      ? { stress: 2, health: 0, energy: 0, reputation: 0 }
+      ? { stress: 1, health: 0, energy: 0, reputation: 0 }
       : state.wellnessTier === 'stretch'
         ? { stress: -1, health: 1, energy: 1, reputation: 0 }
-        : state.wellnessTier === 'gym'
-          ? { stress: -2, health: 2, energy: 1, reputation: 0 }
-          : { stress: -4, health: 2, energy: 2, reputation: 0 }
+      : state.wellnessTier === 'gym'
+          ? { stress: -1, health: 1, energy: 1, reputation: 0 }
+          : { stress: -2, health: 1, energy: 2, reputation: 0 }
 
   return {
     stress: housingShift.stress + transportShift.stress + foodShift.stress + wellnessShift.stress,
