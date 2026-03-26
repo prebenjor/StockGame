@@ -7,6 +7,16 @@ type Props = {
   dispatch: React.Dispatch<GameAction>
 }
 
+function CardMedia({ imageUrl, imageAlt }: { imageUrl?: string; imageAlt?: string }) {
+  if (!imageUrl) return null
+
+  return (
+    <div className="card-media">
+      <img src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
+    </div>
+  )
+}
+
 export function MarketPanel({ state, dispatch }: Props) {
   const fee = getTradingFee(state)
   const watchlistStocks = state.market.filter((stock) => state.watchlist.includes(stock.symbol))
@@ -27,7 +37,11 @@ export function MarketPanel({ state, dispatch }: Props) {
           <span className="panel-kicker">Market</span>
           <h2>Stocks, ETFs, and news</h2>
         </div>
-        <p>{state.bankAccount && hasStableHousing(state) ? 'The stock side now supports steadier ETF accumulation, watchlists, and weekly movement with bigger month-end earnings/news reactions.' : 'The tape is open even when you are broke, but bad banking and bad living conditions mean every trade leaks more edge in fees.'}</p>
+        <p>
+          {state.bankAccount && hasStableHousing(state)
+            ? 'The stock side now supports steadier ETF accumulation, watchlists, and weekly movement with bigger month-end earnings and news reactions.'
+            : 'The tape is open even when you are broke, but bad banking and bad living conditions mean every trade leaks more edge in fees.'}
+        </p>
       </div>
 
       <div className="dual-grid">
@@ -58,7 +72,10 @@ export function MarketPanel({ state, dispatch }: Props) {
                 <div className="banking-row" key={stock.symbol}>
                   <div className="card-topline">
                     <strong>{stock.symbol}</strong>
-                    <span className={stock.change >= 0 ? 'positive' : 'negative'}>{stock.change >= 0 ? '+' : ''}{stock.change}%</span>
+                    <span className={stock.change >= 0 ? 'positive' : 'negative'}>
+                      {stock.change >= 0 ? '+' : ''}
+                      {stock.change}%
+                    </span>
                   </div>
                   <div className="tag-row">
                     <span className="tag">{stock.assetType.toUpperCase()}</span>
@@ -115,8 +132,10 @@ export function MarketPanel({ state, dispatch }: Props) {
           const buyOneReason = state.cash < stock.price + fee ? `Need ${money(Math.ceil(stock.price + fee))} cash` : undefined
           const buyFiveReason = state.cash < stock.price * 5 + fee ? `Need ${money(Math.ceil(stock.price * 5 + fee))} cash` : undefined
           const sellReason = !holding ? 'No shares owned' : undefined
+
           return (
             <article className="card stock-card" key={stock.symbol}>
+              <CardMedia imageUrl={stock.imageUrl} imageAlt={stock.imageAlt} />
               <div className="card-topline">
                 <h3>{stock.symbol}</h3>
                 <span className={stock.change >= 0 ? 'positive' : 'negative'}>
@@ -128,22 +147,28 @@ export function MarketPanel({ state, dispatch }: Props) {
               <p>{stock.thesis}</p>
               <div className="stock-meta">
                 <strong>{price(stock.price)}</strong>
-                <span>{stock.assetType === 'etf' ? `ETF • ${stock.sector}` : `Stock • ${stock.sector}`}</span>
+                <span>{stock.assetType === 'etf' ? `ETF | ${stock.sector}` : `Stock | ${stock.sector}`}</span>
                 <span>Dividend {price(stock.dividend)}/share</span>
               </div>
               <div className="tag-row">
                 <span className="tag">Holding {holding ? `${holding.shares} sh` : 'none'}</span>
                 {holding ? <span className="tag">Avg {price(holding.averageCost)}</span> : null}
                 <span className="tag">Fee {money(fee)}</span>
-                {stock.assetType === 'etf' ? <span className="tag">ER {((stock.expenseRatio ?? 0) * 100).toFixed(2)}%</span> : <span className="tag">Earnings q{(((stock.earningsMonth ?? 1) - 1) % 4) + 1}</span>}
+                {stock.assetType === 'etf'
+                  ? <span className="tag">ER {((stock.expenseRatio ?? 0) * 100).toFixed(2)}%</span>
+                  : <span className="tag">Earnings q{(((stock.earningsMonth ?? 1) - 1) % 4) + 1}</span>}
                 {isWatching ? <span className="tag accent">Watching</span> : null}
               </div>
               <div className="action-stack">
                 <div className="action-section">
                   <span className="action-label">Primary Action</span>
                   <div className="action-row">
-                    <button className="mini-button" disabled={!!buyOneReason} onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 1 })} title={buyOneReason}>Buy 1</button>
-                    <button className="mini-button" disabled={!!buyFiveReason} onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 5 })} title={buyFiveReason}>Buy 5</button>
+                    <button className="mini-button" disabled={!!buyOneReason} onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 1 })} title={buyOneReason}>
+                      Buy 1
+                    </button>
+                    <button className="mini-button" disabled={!!buyFiveReason} onClick={() => dispatch({ type: 'BUY_STOCK', symbol: stock.symbol, shares: 5 })} title={buyFiveReason}>
+                      Buy 5
+                    </button>
                     <button className="mini-button ghost" onClick={() => dispatch({ type: 'TOGGLE_WATCHLIST', symbol: stock.symbol })}>
                       {isWatching ? 'Unwatch' : 'Watch'}
                     </button>
@@ -155,8 +180,12 @@ export function MarketPanel({ state, dispatch }: Props) {
                 <div className="action-section">
                   <span className="action-label">Secondary Actions</span>
                   <div className="action-row">
-                    <button className="mini-button ghost" disabled={!!sellReason} onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: 1 })} title={sellReason}>Sell 1</button>
-                    <button className="mini-button ghost" disabled={!!sellReason} onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: holding?.shares ?? 0 })} title={sellReason}>Sell All</button>
+                    <button className="mini-button ghost" disabled={!!sellReason} onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: 1 })} title={sellReason}>
+                      Sell 1
+                    </button>
+                    <button className="mini-button ghost" disabled={!!sellReason} onClick={() => dispatch({ type: 'SELL_STOCK', symbol: stock.symbol, shares: holding?.shares ?? 0 })} title={sellReason}>
+                      Sell All
+                    </button>
                   </div>
                   <p className="action-hint">
                     {sellReason ? `Sell blocked: ${sellReason}.` : 'Secondary move: trim positions when you need liquidity or conviction has changed.'}

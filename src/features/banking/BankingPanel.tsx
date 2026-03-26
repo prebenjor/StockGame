@@ -8,6 +8,16 @@ type Props = {
   dispatch: React.Dispatch<GameAction>
 }
 
+function CardMedia({ imageUrl, imageAlt }: { imageUrl?: string; imageAlt?: string }) {
+  if (!imageUrl) return null
+
+  return (
+    <div className="card-media">
+      <img src={imageUrl} alt={imageAlt ?? ''} loading="lazy" />
+    </div>
+  )
+}
+
 export function BankingPanel({ state, dispatch }: Props) {
   const debtService = getDebtService(state)
   const creditCard = getCreditCardAccount(state)
@@ -134,6 +144,7 @@ export function BankingPanel({ state, dispatch }: Props) {
           const buy2Reason = !state.bankAccount ? 'Open a bank account first' : state.cash < bond.minPurchase * 2 ? `Need ${money(bond.minPurchase * 2)} cash` : undefined
           return (
             <article className="card" key={bond.id}>
+              <CardMedia imageUrl={bond.imageUrl} imageAlt={bond.imageAlt} />
               <div className="card-topline">
                 <h3>{bond.title}</h3>
                 <span>{(yieldRate * 100).toFixed(1)}%</span>
@@ -182,6 +193,7 @@ export function BankingPanel({ state, dispatch }: Props) {
         ) : (
           state.bondHoldings.map((holding) => (
             <article className="card" key={holding.uid}>
+              <CardMedia imageUrl={BOND_MAP[holding.templateId].imageUrl} imageAlt={BOND_MAP[holding.templateId].imageAlt} />
               <div className="card-topline">
                 <h3>{BOND_MAP[holding.templateId].title}</h3>
                 <span>{money(getBondValue(holding, state))}</span>

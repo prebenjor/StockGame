@@ -155,7 +155,7 @@ export type OwnedBusiness = {
   monthsOperating: number
 }
 
-export type Stock = {
+export type Stock = MediaAsset & {
   symbol: string
   name: string
   sector: string
@@ -175,7 +175,7 @@ export type Holding = {
   averageCost: number
 }
 
-export type BondTemplate = {
+export type BondTemplate = MediaAsset & {
   id: string
   title: string
   description: string

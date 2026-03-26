@@ -27,7 +27,7 @@ export const JOBS: Job[] = [
   { id: 'night-cleaning', title: 'Night Cleaning Shift', salary: 240, reputationRequired: 0, certifications: [], description: 'Low pay, rough hours, and just enough money to stay in motion.', ...JOB_IMAGES.cleaning },
   { id: 'odd-jobs', title: 'Odd Jobs Circuit', salary: 420, reputationRequired: 0, certifications: [], description: 'Temp shifts, cleaning gigs, and moving boxes just to stay afloat.', ...JOB_IMAGES.labor },
   { id: 'cafe', title: 'Cafe Shift Lead', salary: 700, reputationRequired: 2, certifications: [], description: 'Early mornings, steady tips, and a little more structure.', ...JOB_IMAGES.cafe },
-  { id: 'warehouse', title: 'Warehouse Picker', salary: 920, reputationRequired: 3, certifications: [], description: 'Long hours and sore knees, but reliable weekly flow once you lock it in.', ...JOB_IMAGES.labor },
+  { id: 'warehouse', title: 'Warehouse Picker', salary: 920, reputationRequired: 3, certifications: [], description: 'Long hours and sore knees, but reliable weekly flow once you lock it in.', ...image('https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=1200&q=80', 'Warehouse aisle with shelves and logistics equipment') },
   { id: 'sales', title: 'Sales Assistant', salary: 1400, reputationRequired: 5, certifications: ['sales-course'], description: 'Commission upside if you can keep a smile on hard days.', ...JOB_IMAGES.sales },
   { id: 'analyst', title: 'Junior Market Analyst', salary: 1900, reputationRequired: 7, certifications: ['finance-cert'], description: 'You finally get paid to read charts instead of just staring at them.', ...JOB_IMAGES.analyst },
   { id: 'manager', title: 'Property Manager', salary: 2700, reputationRequired: 10, certifications: ['landlord-license'], description: 'Leasing, maintenance calls, and useful landlord contacts.', ...JOB_IMAGES.property },
@@ -116,7 +116,7 @@ export const SIDE_JOBS: SideJob[] = [
     knowledgeGain: 1,
     contactId: 'banker',
     bankAccountRequired: true,
-    ...JOB_IMAGES.analyst,
+    ...image('https://images.unsplash.com/photo-1554224154-22dec7ec8818?auto=format&fit=crop&w=1200&q=80', 'Financial internship style desk with charts and laptop'),
   },
   {
     id: 'freelance-retainer',
@@ -184,7 +184,7 @@ export const SIDE_JOBS: SideJob[] = [
     knowledgeGain: 1,
     contactId: 'recruiter',
     bankAccountRequired: true,
-    ...JOB_IMAGES.startup,
+    ...image('https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80', 'Startup internship style team discussion in a small office'),
   },
 ]
 
