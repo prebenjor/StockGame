@@ -33,7 +33,7 @@ export const HOUSING_OPTIONS: LifestyleOption<HousingTier>[] = [
     monthlyCost: 470,
     switchCost: 360,
     description: 'Expensive for the size, but it finally feels like you have your own base.',
-    ...image('https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80', 'Small studio apartment with a bed and window light'),
+    ...image('https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1200&q=80', 'Compact studio apartment with warm light and minimal furniture'),
   },
   {
     id: 'apartment',
@@ -122,7 +122,7 @@ export const WELLNESS_OPTIONS: LifestyleOption<WellnessTier>[] = [
     monthlyCost: 0,
     switchCost: 0,
     description: 'You just keep pushing and hope nothing snaps.',
-    ...image('https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=1200&q=80', 'Tired workspace late at night with little recovery'),
+    ...image('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80', 'Late-night road and city lights suggesting burnout and no recovery'),
   },
   {
     id: 'stretch',
