@@ -8,6 +8,7 @@ import { GIGS, SIDE_JOB_MAP } from './features/career/data'
 import { HintsDock } from './components/HintsDock'
 import { HeroPanel } from './features/dashboard/HeroPanel'
 import { SidePanel } from './features/dashboard/OverviewPanels'
+import { TopResourceBar } from './features/dashboard/TopResourceBar'
 import { EducationPanel } from './features/education/EducationPanel'
 import { LedgerPanel } from './features/ledger/LedgerPanel'
 import { LifestylePanel } from './features/lifestyle/LifestylePanel'
@@ -117,7 +118,6 @@ function App() {
 
   const currentJob = getCurrentJob(state)
   const activeTheme = SECTION_THEMES[activeView]
-  const calendarLabel = formatCalendarLabel(state.month, state.weekOfMonth)
   const selectViewById = useCallback((viewId: ViewId) => {
     setActiveView(viewId)
     if (!desktopRailVisible) {
@@ -139,38 +139,6 @@ function App() {
     if (!isWeekPlanReady(stateRef.current)) return
     startTransition(() => dispatch({ type: 'COMMIT_WEEK_PLAN' }))
   }
-
-  const renderSectionNav = (className: string) => (
-    <nav className={className} aria-label="Game sections" role="tablist">
-      {VIEWS.map((view, index) => (
-        <button
-          key={view.id}
-          ref={(element) => {
-            viewRefs.current[index] = element
-          }}
-          className={`top-nav-item ${activeView === view.id ? 'active' : ''}`}
-          onClick={() => selectViewById(view.id)}
-          onKeyDown={(event) => handleViewKeyDown(event, index)}
-          type="button"
-          role="tab"
-          id={`tab-${view.id}`}
-          aria-selected={activeView === view.id}
-          aria-controls={`panel-${view.id}`}
-          tabIndex={activeView === view.id ? 0 : -1}
-          style={
-            {
-              '--chip-accent': view.accent,
-              '--chip-accent-soft': view.accentSoft,
-              '--chip-glow': view.glow,
-            } as React.CSSProperties
-          }
-        >
-          <span>{view.kicker}</span>
-          <strong>{view.label}</strong>
-        </button>
-      ))}
-    </nav>
-  )
 
   const handleViewKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
@@ -421,7 +389,7 @@ function App() {
       const creditUtilization = getCreditUtilization(latestState)
       const featuredSituations = getFeaturedWeekSituations(latestState)
       const snapshot = {
-        coordinateSystem: 'No spatial coordinates. Desktop uses a compact side HUD, a horizontal section nav above content, and a fluid content pane. Mobile uses a compact top bar plus a drawer HUD.',
+        coordinateSystem: 'No spatial coordinates. Desktop uses a fixed top resource hub, a slim left section rail, and a two-column overview stage. Mobile uses a compact top bar plus a drawer navigation rail.',
         mode: 'management-sim',
         activeView: latestActiveView,
         activeViewIndex: VIEWS.findIndex((view) => view.id === latestActiveView),
@@ -548,7 +516,7 @@ function App() {
         ui: {
           toolbarSummary: toolbarSummary ?? null,
           desktopRailVisible,
-          desktopTopNavVisible: desktopRailVisible,
+          desktopSideNavVisible: desktopRailVisible,
           mobileDrawerOpen: mobileRailOpen,
           assignedWeekSlots: latestAssignedWeekSlots,
           weekPlanReadyToRun: latestWeekPlanReady,
@@ -622,37 +590,41 @@ function App() {
       <div className="app-layout">
         <aside className={`game-rail ${mobileRailOpen ? 'open' : ''}`} data-open={mobileRailOpen ? 'true' : 'false'}>
           <HeroPanel
-            state={state}
-            currentJob={currentJob}
-            dispatch={dispatch}
             activeView={activeView}
             views={VIEWS}
             viewRefs={viewRefs}
             onSelectView={(viewId) => selectViewById(viewId as ViewId)}
             onViewKeyDown={handleViewKeyDown}
-            showNavigation={!desktopRailVisible}
             mobileDrawerOpen={mobileRailOpen}
             onCloseDrawer={() => setMobileRailOpen(false)}
           />
         </aside>
 
         <div className="app-main">
-          <header className="mobile-topbar">
-            <button className="mobile-menu-button" type="button" onClick={() => setMobileRailOpen(true)} aria-label="Open game menu">
-              Menu
-            </button>
-            <div className="mobile-topbar-cluster">
-              <strong>{calendarLabel}</strong>
-              <span>{currentJob.title}</span>
-            </div>
-            <div className="mobile-topbar-stats">
-              <span>Cash {money(state.cash)}</span>
-              <span>Health {state.health}</span>
-              <span>Open {state.actionPoints}</span>
-            </div>
-          </header>
-
-          {desktopRailVisible ? renderSectionNav('desktop-top-nav') : null}
+          {desktopRailVisible ? (
+            <TopResourceBar
+              state={state}
+              currentJob={currentJob}
+              onAdvanceWeek={advanceWeek}
+              onResetSave={() => dispatch({ type: 'RESET' })}
+              advanceDisabled={!isWeekPlanReady(state) || (state.weekPlanCommitted && state.weekResolutionPhase === 'resolving')}
+            />
+          ) : (
+            <header className="mobile-topbar">
+              <button className="mobile-menu-button" type="button" onClick={() => setMobileRailOpen(true)} aria-label="Open game menu">
+                Menu
+              </button>
+              <div className="mobile-topbar-cluster">
+                <strong>{formatCalendarLabel(state.month, state.weekOfMonth)}</strong>
+                <span>{currentJob.title}</span>
+              </div>
+              <div className="mobile-topbar-stats">
+                <span>Cash {money(state.cash)}</span>
+                <span>Health {state.health}</span>
+                <span>Open {state.actionPoints}</span>
+              </div>
+            </header>
+          )}
 
           <main
             className="content-shell"

@@ -373,3 +373,25 @@ TODO
     - `output/web-game-week-hub-refresh/mobile-topbar.png` plus `mobile-topbar-state.json` confirm the compact mobile top bar still exposes the essentials.
     - `output/web-game-week-hub-refresh/mobile-drawer.png` plus `mobile-drawer-state.json` confirm the drawer still works with nav near the top and `mobileDrawerOpen: true`.
   - No `errors-*.json` files were generated during the shared-client validation run.
+- Adapted the shell again toward the cleaner `Tactical Horizon` structure instead of keeping the previous `top nav + side HUD` split:
+  - desktop now uses a fixed top resource hub for calendar, role, cash, runway, buffer, debt, health, energy, stress, open days, and primary actions
+  - the left rail is back to being navigation-only
+  - overview now uses a center-stage planner column plus a desktop right-side inbox column for `Live situations`, `Live openings`, and `Recent beats`
+  - mobile keeps the compact top bar + drawer navigation pattern
+- The old desktop top navigation strip is gone from the content area; section switching now lives only in the left rail on desktop and the drawer on mobile.
+- `render_game_to_text` now describes the shell as:
+  - fixed top resource hub
+  - slim left section rail
+  - two-column overview stage
+  - compact mobile top bar + drawer navigation rail
+- Re-verified after the tactical-shell pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Browser validation for the tactical-shell pass:
+  - Shared Playwright client:
+    - `output/web-game-tactical-shell-idle/state-0.json` confirms the shell export with `desktopSideNavVisible: true`, `assignedWeekSlots: 0`, and the overview still exporting the planner state.
+    - `output/web-game-tactical-shell-idle/shot-0.png` confirms the new desktop shell renders in-browser without console error files.
+  - Direct Playwright captures:
+    - `output/web-game-tactical-shell/desktop-overview.png` plus `desktop-overview-state.json` confirm the intended desktop structure: top resource hub, nav-only left rail, center planner, and right-side inbox.
+    - `output/web-game-tactical-shell/desktop-market-state.json` confirms non-overview sections still render and export correctly under the new shell; the corresponding reliable visual check is `desktop-market-viewport.png` because the full-page market screenshot was misleadingly sparse due to page height.
+    - `output/web-game-tactical-shell/mobile-overview.png` plus `mobile-overview-state.json` confirm the compact mobile top bar and single-column overview stack.
+    - `output/web-game-tactical-shell/mobile-drawer.png` plus `mobile-drawer-state.json` confirm the drawer nav works under the new shell.
+  - No `errors-*.json` files were generated during the shared-client validation run.
