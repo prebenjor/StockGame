@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { FOOD_OPTION_MAP, HOUSING_OPTION_MAP, TRANSPORT_OPTION_MAP, WELLNESS_OPTION_MAP } from '../../features/lifestyle/data'
 import { CONTACT_MAP } from '../../features/world/data'
 import { money } from '../../game/core/format'
-import { getWeekPlanOptions } from '../../game/core/planning'
+import { getFeaturedWeekSituations, getWeekPlanOptions } from '../../game/core/planning'
 import { getConditionTone, getRouteOptions, getTips, getWeeklyRunway } from '../../game/core/selectors'
 import type { GameAction, GameState, PlannedWeekAction, WeekPlanKind } from '../../game/core/types'
 import { canOpenCreditCard, hasStableHousing } from '../../game/core/utils'
@@ -21,6 +21,16 @@ const PLAN_GROUP_LABELS: Record<WeekPlanKind, string> = {
   growth: 'Growth',
   money: 'Money',
 }
+
+const EVENT_CATEGORY_LABELS = {
+  work: 'Work',
+  housing: 'Housing',
+  social: 'Social',
+  education: 'Study',
+  market: 'Market',
+  property: 'Property',
+  business: 'Business',
+} as const
 
 function getSituationLine(state: GameState, weeklyRunway: number) {
   if (state.stress >= 80) return 'The week can still work, but pushing blindly would probably make it worse.'
@@ -104,6 +114,8 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
   const wellnessLabel = WELLNESS_OPTION_MAP[state.wellnessTier].title
   const [selectedSlot, setSelectedSlot] = useState(0)
   const planOptions = getWeekPlanOptions(state)
+  const featuredSituations = getFeaturedWeekSituations(state)
+  const visibleSituations = [featuredSituations.major, featuredSituations.side].filter(Boolean)
 
   useEffect(() => {
     if (!state.weekPlanCommitted || state.weekResolutionPhase !== 'resolving') return
@@ -148,7 +160,7 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
       className="panel week-hub-panel"
       data-ui-section="overview"
       data-active-subtab="hub"
-      data-toolbar-summary={`${state.actionPoints} open days | ${liveOpportunities.length} live leads | ${state.activeWeekEventCards.length} live events`}
+      data-toolbar-summary={`${state.actionPoints} open days | ${liveOpportunities.length} live leads | ${visibleSituations.length} featured situations`}
     >
       <div className="panel-header">
         <div>
@@ -378,27 +390,27 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
 
         <article className="hub-card live-events">
           <div className="card-topline">
-            <h3>Live event cards</h3>
-            <span>{state.activeWeekEventCards.length === 0 ? 'Quiet' : `${state.activeWeekEventCards.length} live`}</span>
+            <h3>Live situations</h3>
+            <span>{visibleSituations.length === 0 ? 'Quiet' : `${visibleSituations.length} in view`}</span>
           </div>
-          {state.activeWeekEventCards.length === 0 ? (
+          {visibleSituations.length === 0 ? (
             <p className="compact-note">No one is putting a fresh choice in front of you right this second. You can shape the week on your own terms.</p>
           ) : (
             <div className="hub-event-list">
-              {state.activeWeekEventCards.map((eventCard) => (
-                <article className={`event-choice-card ${eventCard.tone}`} key={eventCard.id}>
+              {featuredSituations.major ? (
+                <article className={`event-choice-card major ${featuredSituations.major.tone}`} key={featuredSituations.major.id}>
                   <div className="card-topline">
-                    <strong>{eventCard.title}</strong>
-                    <span>{eventCard.category}</span>
+                    <strong>{featuredSituations.major.title}</strong>
+                    <span>Major {EVENT_CATEGORY_LABELS[featuredSituations.major.category]}</span>
                   </div>
-                  <p>{eventCard.detail}</p>
+                  <p>{featuredSituations.major.detail}</p>
                   <div className="event-option-row">
-                    {eventCard.options.map((option) => (
+                    {featuredSituations.major.options.map((option) => (
                       <button
                         className="mini-button ghost"
-                        key={option.id}
+                        key={`${featuredSituations.major?.id}-${option.id}`}
                         type="button"
-                        onClick={() => dispatch({ type: 'CHOOSE_WEEK_EVENT_OPTION', eventId: eventCard.id, optionId: option.id })}
+                        onClick={() => dispatch({ type: 'CHOOSE_WEEK_EVENT_OPTION', eventId: featuredSituations.major!.id, optionId: option.id })}
                         disabled={state.weekResolutionPhase === 'resolving'}
                       >
                         {option.label}
@@ -406,7 +418,36 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
                     ))}
                   </div>
                 </article>
-              ))}
+              ) : null}
+
+              {featuredSituations.side ? (
+                <article className={`event-choice-card side ${featuredSituations.side.tone}`} key={featuredSituations.side.id}>
+                  <div className="card-topline">
+                    <strong>{featuredSituations.side.title}</strong>
+                    <span>Side {EVENT_CATEGORY_LABELS[featuredSituations.side.category]}</span>
+                  </div>
+                  <p>{featuredSituations.side.detail}</p>
+                  <div className="event-option-row">
+                    {featuredSituations.side.options.map((option) => (
+                      <button
+                        className="mini-button ghost"
+                        key={`${featuredSituations.side?.id}-${option.id}`}
+                        type="button"
+                        onClick={() => dispatch({ type: 'CHOOSE_WEEK_EVENT_OPTION', eventId: featuredSituations.side!.id, optionId: option.id })}
+                        disabled={state.weekResolutionPhase === 'resolving'}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              ) : null}
+
+              {featuredSituations.hiddenCount > 0 ? (
+                <article className="compact-note">
+                  {featuredSituations.hiddenCount} more situation{featuredSituations.hiddenCount > 1 ? 's are' : ' is'} waiting in the background. The big decisions are the ones above.
+                </article>
+              ) : null}
             </div>
           )}
         </article>

@@ -1,4 +1,5 @@
 import { startTransition } from 'react'
+import { formatCalendarLabel } from '../../game/core/calendar'
 import { money } from '../../game/core/format'
 import { getWeeklyRunway } from '../../game/core/selectors'
 import type { GameAction, GameState, Job } from '../../game/core/types'
@@ -58,29 +59,75 @@ export function HeroPanel({
   const sideWorkLabel = currentSideJobs.length > 0 ? `${currentSideJobs.length} side role${currentSideJobs.length > 1 ? 's' : ''}` : 'No side work'
   const buffer = state.cash + state.savingsBalance
   const debtTone = state.debt > 0 ? 'negative' : 'positive'
+  const calendarLabel = formatCalendarLabel(state.month, state.weekOfMonth)
 
   return (
     <aside className="game-rail-shell" aria-label="Session rail">
-      <div className="rail-topline">
-        <div>
-          <span className="panel-kicker">This Week</span>
-          <h1>
-            Week {state.week} / Month {state.month} / W{state.weekOfMonth}
-          </h1>
+      <div className="rail-header-stack">
+        <div className="rail-topline">
+          <div>
+            <span className="panel-kicker">This Week</span>
+            <h1>{calendarLabel}</h1>
+          </div>
+          <button className="secondary-button rail-close" type="button" onClick={onCloseDrawer}>
+            Close
+          </button>
         </div>
-        <button className="secondary-button rail-close" type="button" onClick={onCloseDrawer}>
-          Close
-        </button>
+
+        <nav className="rail-nav" aria-label="Game sections" role="tablist">
+          {views.map((view, index) => (
+            <button
+              key={view.id}
+              ref={(element) => {
+                viewRefs.current[index] = element
+              }}
+              className={`rail-nav-item ${activeView === view.id ? 'active' : ''}`}
+              onClick={() => onSelectView(view.id)}
+              onKeyDown={(event) => onViewKeyDown(event, index)}
+              type="button"
+              role="tab"
+              id={`tab-${view.id}`}
+              aria-selected={activeView === view.id}
+              aria-controls={`panel-${view.id}`}
+              tabIndex={activeView === view.id ? 0 : -1}
+              style={
+                {
+                  '--chip-accent': view.accent,
+                  '--chip-accent-soft': view.accentSoft,
+                  '--chip-glow': view.glow,
+                } as React.CSSProperties
+              }
+              data-mobile-open={mobileDrawerOpen ? 'true' : 'false'}
+            >
+              <span>{view.kicker}</span>
+              <strong>{view.label}</strong>
+            </button>
+          ))}
+        </nav>
       </div>
 
       <p className="sr-only" aria-live="polite">
-        Week {state.week}, month {state.month}, week slot {state.weekOfMonth}. Current job {currentJob.title}. Weekly runway {money(weeklyRunway)}. Cash {money(state.cash)}. Debt {money(state.debt)}. Open days {state.actionPoints}. Health {state.health}. Energy {state.energy}. Stress {state.stress}. Credit utilization {(getCreditUtilization(state) * 100).toFixed(0)} percent.
+        {calendarLabel}. Absolute week {state.week}. Current job {currentJob.title}. Weekly runway {money(weeklyRunway)}. Cash {money(state.cash)}. Debt {money(state.debt)}. Open days {state.actionPoints}. Health {state.health}. Energy {state.energy}. Stress {state.stress}. Credit utilization {(getCreditUtilization(state) * 100).toFixed(0)} percent.
       </p>
 
       <section className="rail-card rail-focus">
         <span className="rail-label">What you're doing</span>
         <strong>{currentJob.title}</strong>
         <p>{state.actionPoints} open days are still yours to place this week.</p>
+      </section>
+
+      <section className="rail-actions">
+        <button
+          id="advance-week-button"
+          className="primary-button"
+          onClick={() => startTransition(() => dispatch({ type: 'END_WEEK' }))}
+          disabled={state.weekPlanCommitted && state.weekResolutionPhase === 'resolving'}
+        >
+          Advance Week
+        </button>
+        <button id="reset-save-button" className="secondary-button" onClick={() => dispatch({ type: 'RESET' })}>
+          Reset Save
+        </button>
       </section>
 
       <section className="rail-card rail-money">
@@ -156,51 +203,6 @@ export function HeroPanel({
           <span className="tag">{sideWorkLabel}</span>
         </div>
       </section>
-
-      <section className="rail-actions">
-        <button
-          id="advance-week-button"
-          className="primary-button"
-          onClick={() => startTransition(() => dispatch({ type: 'END_WEEK' }))}
-          disabled={state.weekPlanCommitted && state.weekResolutionPhase === 'resolving'}
-        >
-          Advance Week
-        </button>
-        <button id="reset-save-button" className="secondary-button" onClick={() => dispatch({ type: 'RESET' })}>
-          Reset Save
-        </button>
-      </section>
-
-      <nav className="rail-nav" aria-label="Game sections" role="tablist">
-        {views.map((view, index) => (
-          <button
-            key={view.id}
-            ref={(element) => {
-              viewRefs.current[index] = element
-            }}
-            className={`rail-nav-item ${activeView === view.id ? 'active' : ''}`}
-            onClick={() => onSelectView(view.id)}
-            onKeyDown={(event) => onViewKeyDown(event, index)}
-            type="button"
-            role="tab"
-            id={`tab-${view.id}`}
-            aria-selected={activeView === view.id}
-            aria-controls={`panel-${view.id}`}
-            tabIndex={activeView === view.id ? 0 : -1}
-            style={
-              {
-                '--chip-accent': view.accent,
-                '--chip-accent-soft': view.accentSoft,
-                '--chip-glow': view.glow,
-              } as React.CSSProperties
-            }
-            data-mobile-open={mobileDrawerOpen ? 'true' : 'false'}
-          >
-            <span>{view.kicker}</span>
-            <strong>{view.label}</strong>
-          </button>
-        ))}
-      </nav>
     </aside>
   )
 }

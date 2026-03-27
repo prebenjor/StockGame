@@ -9,6 +9,75 @@ function addIf<T>(items: T[], condition: unknown, value: T) {
   if (condition) items.push(value)
 }
 
+const FOLLOW_UP_EVENT_IDS = new Set([
+  'manager-nod',
+  'weekend-lane-opens',
+  'recruiter-call-back',
+  'watchlist-flash',
+  'broker-whisper',
+  'supplier-intro',
+  'study-nudge',
+])
+
+function getWeekEventPriority(state: GameState, card: WeekEventCard) {
+  let score = 10
+
+  if (FOLLOW_UP_EVENT_IDS.has(card.id)) {
+    score += 18
+  }
+
+  if (card.tone === 'bad') score += 6
+  if (card.tone === 'good') score += 4
+
+  switch (card.category) {
+    case 'housing':
+      score += hasStableHousing(state) ? 4 : 26
+      break
+    case 'work':
+      score += state.jobId ? 14 : 6
+      score += state.stress >= 58 ? 8 : 0
+      break
+    case 'education':
+      score += state.educationEnrollment ? 22 : state.knowledge >= 6 ? 10 : 0
+      break
+    case 'market':
+      score += state.watchlist.length > 0 || Object.keys(state.holdings).length > 0 ? 18 : 6
+      break
+    case 'property':
+      score += state.properties.length > 0 ? 22 : state.storyFlags.includes('room-lead-open') ? 16 : 8
+      break
+    case 'business':
+      score += state.businesses.length > 0 ? 22 : state.reputation >= 2 ? 10 : 4
+      break
+    case 'social':
+      score += !state.bankAccount || state.opportunities.length > 0 ? 12 : 6
+      break
+  }
+
+  if (card.id === 'extra-shift-request' && state.stress >= 70) score += 8
+  if (card.id === 'room-lead' && !hasStableHousing(state)) score += 10
+  if (card.id === 'market-whisper' && state.watchlist.length >= 2) score += 8
+  if (card.id === 'tenant-text' && state.properties.some((property) => property.rented)) score += 8
+  if (card.id === 'supplier-call' && state.businesses.length > 0) score += 8
+
+  return score
+}
+
+export function sortWeekEventCards(state: GameState, cards: WeekEventCard[]) {
+  return cards
+    .slice()
+    .sort((left, right) => getWeekEventPriority(state, right) - getWeekEventPriority(state, left))
+}
+
+export function getFeaturedWeekSituations(state: GameState) {
+  const sortedCards = sortWeekEventCards(state, state.activeWeekEventCards)
+  return {
+    major: sortedCards[0] ?? null,
+    side: sortedCards[1] ?? null,
+    hiddenCount: Math.max(0, sortedCards.length - 2),
+  }
+}
+
 export function getWeekPlanOptions(state: GameState): PlannedWeekAction[] {
   const options: PlannedWeekAction[] = []
   const starterSideJob = SIDE_JOB_MAP['delivery-route']
@@ -258,6 +327,36 @@ export function getWeekFollowUpEventCards(actionId: string): WeekEventCard[] {
     ]
   }
 
+  if (actionId === 'steady-side-work') {
+    return [
+      {
+        id: 'weekend-lane-opens',
+        title: 'Someone offers a steadier lane',
+        detail: 'The new side-work rhythm already made you easier to slot into something more regular.',
+        category: 'work',
+        tone: 'good',
+        options: [
+          {
+            id: 'keep-it-regular',
+            label: 'Keep it regular',
+            detail: 'Take the steadier setup and protect the rest of your week.',
+            cash: 35,
+            reputation: 1,
+          },
+          {
+            id: 'push-for-more',
+            label: 'Push for more',
+            detail: 'Ask for the bigger lane while the opening is still warm.',
+            cash: 60,
+            stress: 2,
+            energy: -2,
+            reputation: 1,
+          },
+        ],
+      },
+    ]
+  }
+
   if (actionId === 'network-round') {
     return [
       {
@@ -380,7 +479,7 @@ export function getWeekFollowUpEventCards(actionId: string): WeekEventCard[] {
         id: 'study-nudge',
         title: 'You find a cleaner way to study',
         detail: 'A small routine tweak could make the whole learning path feel less punishing.',
-        category: 'social',
+        category: 'education',
         tone: 'neutral',
         options: [
           {
@@ -503,6 +602,35 @@ export function getWeekEventCards(state: GameState): WeekEventCard[] {
     })
   }
 
+  if (state.educationEnrollment || state.knowledge >= 8) {
+    cards.push({
+      id: 'course-deadline',
+      title: state.educationEnrollment ? 'Course pressure shows up mid-week' : 'A study lead asks for follow-through',
+      detail: state.educationEnrollment
+        ? 'A cleaner submission now would keep the program from feeling heavier next month.'
+        : 'Someone offers to send over better materials if you make room for them this week.',
+      category: 'education',
+      tone: state.educationEnrollment ? 'bad' : 'neutral',
+      options: [
+        {
+          id: 'push-through-course',
+          label: 'Make room for it',
+          detail: 'Treat it like a real commitment and take the short-term hit.',
+          knowledge: 2,
+          stress: 2,
+          energy: -2,
+        },
+        {
+          id: 'keep-the-week-light',
+          label: 'Keep the week lighter',
+          detail: 'Protect your energy and let the pace breathe a little.',
+          stress: -2,
+          energy: 1,
+        },
+      ],
+    })
+  }
+
   if (state.bankAccount && state.watchlist.length > 0) {
     cards.push({
       id: 'market-whisper',
@@ -590,5 +718,5 @@ export function getWeekEventCards(state: GameState): WeekEventCard[] {
     })
   }
 
-  return cards.slice(0, 2)
+  return sortWeekEventCards(state, cards)
 }

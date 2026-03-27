@@ -7,7 +7,7 @@ import { PERSONAL_ACTION_MAP } from '../../features/personal/data'
 import { PROPERTIES, PROPERTY_MAP, TENANT_PROFILES, TENANT_PROFILE_MAP } from '../../features/property/data'
 import { CONTACTS, DISTRICTS, DISTRICT_MAP, FOOD_SURVIVAL_EVENTS, HOUSING_SURVIVAL_EVENTS, LIFE_EVENTS, MONTHLY_EVENTS, RIVALS, SHARED_HOUSING_EVENTS, STARTER_BREAK_EVENTS, TRANSPORT_SURVIVAL_EVENTS } from '../../features/world/data'
 import { money } from './format'
-import { getWeekEventCards, getWeekFollowUpEventCards, mergeWeekEventCards } from './planning'
+import { getWeekEventCards, getWeekFollowUpEventCards, mergeWeekEventCards, sortWeekEventCards } from './planning'
 import { hydrateState } from './storage'
 import type { ContactState, Course, DebtAccount, GameAction, GameState, LifeEvent, MarketNews, MonthlySnapshot, Opportunity, Tone, WeekEventOption, WeekResolutionResult } from './types'
 import { canBuyBusiness, canBuyProperty, canOpenCreditCard, canRunGig, canTakeBusinessLoan, canTakeJob, canTakeSideJob, clamp, getBondValue, getBondYield, getBusinessDebtBalance, getBusinessMonthlyProfit, getBusinessValue, getComplianceRisk, getCreditCardAccount, getCreditUtilization, getDebtTotal, getInterestRate, getLifestyleConditionShift, getLifestyleSwitchCost, getLivingCost, getLockedReason, getMonthlyTaxEstimate, getNetWorth, getPassiveIncomePreview, getPropertyAskingPrice, getPropertyRent, getPropertyUpkeep, getPropertyValue, getRenovationBoost, getRenovationCost, getSavingsRate, getTradingFee, hasStableHousing, hasUpgrade, randomBetween, randomInt, randomItem, roundPrice, toWeeklyAmount, WEEKS_PER_MONTH } from './utils'
@@ -358,7 +358,7 @@ function applyPlannedWeekAction(state: GameState, slotIndex: number) {
   if (followUpCards.length > 0) {
     nextState = {
       ...nextState,
-      activeWeekEventCards: mergeWeekEventCards(nextState.activeWeekEventCards, followUpCards).slice(0, 4),
+      activeWeekEventCards: sortWeekEventCards(nextState, mergeWeekEventCards(nextState.activeWeekEventCards, followUpCards)).slice(0, 4),
     }
     deltas = [...deltas, `New event${followUpCards.length > 1 ? 's' : ''}`]
   }
@@ -897,7 +897,7 @@ export function createInitialState(): GameState {
   }
   return {
     ...baseState,
-    activeWeekEventCards: getWeekEventCards(baseState),
+    activeWeekEventCards: getWeekEventCards(baseState).slice(0, 4),
   }
 }
 
@@ -2662,7 +2662,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     stateAfterLife.weekPlanCommitted = false
     stateAfterLife.weekResolutionCursor = 0
     stateAfterLife.weekResolutionPhase = hadCommittedPlan ? 'settled' : 'idle'
-    stateAfterLife.activeWeekEventCards = mergeWeekEventCards(stateAfterLife.activeWeekEventCards, getWeekEventCards(stateAfterLife)).slice(0, 4)
+    stateAfterLife.activeWeekEventCards = sortWeekEventCards(
+      stateAfterLife,
+      mergeWeekEventCards(stateAfterLife.activeWeekEventCards, getWeekEventCards(stateAfterLife)),
+    ).slice(0, 4)
 
     return pushLog(stateAfterLife, isMonthEnd ? event.title : `Week ${state.week} closed`, notes.join(' '), salary + rentalIncome + businessIncome + dividends + bondIncome + savingsInterest - maintenance - livingCost - debtService >= 0 ? 'good' : 'bad')
   }

@@ -18,7 +18,9 @@ import { NetworkPanel } from './features/network/NetworkPanel'
 import { PersonalPanel } from './features/personal/PersonalPanel'
 import { PERSONAL_ACTIONS } from './features/personal/data'
 import { PropertyPanel } from './features/property/PropertyPanel'
+import { formatCalendarLabel, getCalendarYear, getMonthInYear } from './game/core/calendar'
 import { money } from './game/core/format'
+import { getFeaturedWeekSituations } from './game/core/planning'
 import { getCurrentJob, getTips, getWeeklyRunway } from './game/core/selectors'
 import { gameReducer, loadState } from './game/core/reducer'
 import { persistState } from './game/core/storage'
@@ -116,6 +118,7 @@ function App() {
   const currentJob = getCurrentJob(state)
   const activeTheme = SECTION_THEMES[activeView]
   const weeklyRunway = getWeeklyRunway(state)
+  const calendarLabel = formatCalendarLabel(state.month, state.weekOfMonth)
 
   const selectViewById = useCallback((viewId: ViewId) => {
     setActiveView(viewId)
@@ -385,6 +388,7 @@ function App() {
       const latestRunway = getWeeklyRunway(latestState)
       const creditCard = getCreditCardAccount(latestState)
       const creditUtilization = getCreditUtilization(latestState)
+      const featuredSituations = getFeaturedWeekSituations(latestState)
       const snapshot = {
         coordinateSystem: 'No spatial coordinates. Desktop uses a fixed left rail and a fluid content pane. Mobile uses a compact top bar plus a drawer rail.',
         mode: 'management-sim',
@@ -394,7 +398,10 @@ function App() {
         timeline: {
           week: latestState.week,
           month: latestState.month,
+          year: getCalendarYear(latestState.month),
+          monthInYear: getMonthInYear(latestState.month),
           weekOfMonth: latestState.weekOfMonth,
+          calendarLabel: formatCalendarLabel(latestState.month, latestState.weekOfMonth),
           ageMonths: latestState.ageMonths,
         },
         controls: {
@@ -436,6 +443,21 @@ function App() {
           category: card.category,
           options: card.options.map((option) => option.label),
         })),
+        featuredWeekSituations: {
+          major: featuredSituations.major
+            ? {
+                title: featuredSituations.major.title,
+                category: featuredSituations.major.category,
+              }
+            : null,
+          side: featuredSituations.side
+            ? {
+                title: featuredSituations.side.title,
+                category: featuredSituations.side.category,
+              }
+            : null,
+          hiddenCount: featuredSituations.hiddenCount,
+        },
         finance: {
           cash: money(latestState.cash),
           savings: money(latestState.savingsBalance),
@@ -583,9 +605,7 @@ function App() {
               Menu
             </button>
             <div className="mobile-topbar-cluster">
-              <strong>
-                Week {state.week} / M{state.month} / W{state.weekOfMonth}
-              </strong>
+              <strong>{calendarLabel}</strong>
               <span>{currentJob.title}</span>
             </div>
             <div className="mobile-topbar-stats">

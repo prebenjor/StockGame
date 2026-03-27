@@ -287,3 +287,29 @@ TODO
 - If the new themed shells feel too wordy, cut more explanatory body copy now that the IA is doing more of the organizational work.
 - The Personal section currently focuses on active recovery and social/leisure stabilization. If it proves fun, the next good extension is low-stakes hobby or routine chains that add flavor without turning downtime into another income engine.
 - Revisit the Lifestyle card density. The expanded living ladder is useful, but the housing view in particular could probably use tighter vertical card packing now that there are more entries.
+- Reordered the left rail so navigation now sits directly under the timeline block, above the role/status containers. The rail shell itself now scrolls, while the top timeline + nav stack stays sticky inside it so the section list remains visible on shorter desktop heights and inside the mobile drawer.
+- Replaced raw week-first labeling in the shell with a calendar-style readout:
+  - desktop rail and mobile top bar now show `Year X / Month Y / WZ`
+  - shared helpers in `src/game/core/calendar.ts` derive `year`, `monthInYear`, and the formatted label from the existing month counter
+  - `render_game_to_text` now exports `timeline.year`, `timeline.monthInYear`, and `timeline.calendarLabel` while still keeping absolute week for debug/export use
+- Tightened the rail navigation cards so the full section list fits more often without feeling oversized, and kept the rail order focused on one persistent shell instead of adding more top-level status surfaces.
+- Shifted the week-event layer toward a drama-first model without adding more permanent UI:
+  - `Overview` now features at most 2 situation cards at once: 1 major scene and 1 side scene
+  - extra queued events are kept in state but summarized as background situations instead of all being promoted into equal-sized cards
+  - event ranking now prioritizes the route/context that actually matters most in the current state (housing pressure, enrolled study, watched market names, owned property/business, etc.)
+- Expanded route identity in the situation layer:
+  - added a new education scene (`Course pressure shows up mid-week`)
+  - changed `study-nudge` follow-ups to the `education` route instead of lumping them into `social`
+  - added a steadier work follow-up (`Someone offers a steadier lane`) after locking in side work
+  - existing work/market/property/business follow-ups now feed into the new featured-situation ranking so route-leaning weeks feel more distinct without adding more panels
+- Re-verified after the nav/calendar/drama pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Browser validation for the nav/calendar/drama pass:
+  - Shared Playwright client:
+    - `output/web-game-nav-calendar-idle/state-0.json` confirms the new shell export with `timeline.calendarLabel: "Year 1 / Month 1 / W1"` and `toolbarSummary: "3 open days | 0 live leads | 1 featured situations"`.
+    - `output/web-game-nav-calendar-idle/shot-0.png` confirms the default overview still renders cleanly after the rail reorder.
+  - Direct Playwright captures:
+    - `output/web-game-nav-calendar-drama/desktop-rail-nav.png` plus `desktop-rail-nav-state.json` confirm the rail tabs now sit near the top under the calendar label on desktop.
+    - `output/web-game-nav-calendar-drama/mobile-drawer-nav.png` plus `mobile-drawer-state.json` confirm the mobile drawer now opens with the same nav-first order and exports `mobileDrawerOpen: true`.
+    - `output/web-game-nav-calendar-drama/route-week.png` plus `route-week-state.json` confirm a route-leaning planned week now resolves into 4 queued situation cards but only surfaces 2 featured ones (`major` work, `side` market, `hiddenCount: 2`).
+    - `output/web-game-nav-calendar-drama/year-rollover.png` plus `year-rollover-state.json` confirm the calendar math at month rollover with `timeline.calendarLabel: "Year 2 / Month 1 / W1"`.
+  - No `errors-*.json` files were generated during the shared-client validation run.

@@ -307,7 +307,7 @@ export type WeekEventCard = {
   id: string
   title: string
   detail: string
-  category: 'work' | 'housing' | 'social' | 'market' | 'property' | 'business'
+  category: 'work' | 'housing' | 'social' | 'education' | 'market' | 'property' | 'business'
   tone: Tone
   options: WeekEventOption[]
   resolvedOptionId?: string | null
