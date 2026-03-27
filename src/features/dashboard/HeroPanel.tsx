@@ -9,6 +9,7 @@ type Props = {
   state: GameState
   currentJob: Job
   dispatch: React.Dispatch<GameAction>
+  compact: boolean
 }
 
 function formatAge(ageMonths: number) {
@@ -17,7 +18,14 @@ function formatAge(ageMonths: number) {
   return `${years}y ${months}m`
 }
 
-export function HeroPanel({ state, currentJob, dispatch }: Props) {
+function getSessionLine(state: GameState, weeklyRunway: number) {
+  if (!state.bankAccount && state.cash >= 25) return `You have ${state.actionPoints} open days and enough cash to finally get banked.`
+  if (state.stress >= 72) return `You have ${state.actionPoints} open days. Keep this week light if you can.`
+  if (weeklyRunway < 0) return `You have ${state.actionPoints} open days and the week is still running a little short.`
+  return `You have ${state.actionPoints} open days and enough room to choose what matters this week.`
+}
+
+export function HeroPanel({ state, currentJob, dispatch, compact }: Props) {
   const weeklyRunway = getWeeklyRunway(state)
   const currentSideJobs = state.sideJobIds.map((id) => SIDE_JOB_MAP[id]).filter(Boolean)
   const housingLabel = HOUSING_OPTION_MAP[state.housingTier].title
@@ -34,17 +42,19 @@ export function HeroPanel({ state, currentJob, dispatch }: Props) {
         Week {state.week}, month {state.month}, week slot {state.weekOfMonth}. Current job {currentJob.title}. {weeklyStatus} You have {state.actionPoints} open days left this week. Housing is {housingLabel}. Banking status is {bankingLabel}. Side work status: {sideWorkLabel}.
       </p>
 
-      <div className="hero-copy">
-        <span className="eyebrow">Street To Skyline</span>
-        <h1>Start from zero. Build leverage.</h1>
+      <div className="hero-copy session-copy">
+        <span className="panel-kicker">This Week</span>
+        <h1>
+          Week {state.week} · Month {state.month} · W{state.weekOfMonth}
+        </h1>
         <p className="hero-text">
-          You are 18, broke, unbanked, and running fragile basics. Each week is about staying stable, building a buffer, and choosing where your open days go next.
+          {getSessionLine(state, weeklyRunway)}
         </p>
         <div className="hero-meta">
           <span className="meta-pill">{formatAge(state.ageMonths)}</span>
           <span className={`meta-pill ${state.bankAccount ? '' : 'warning'}`}>{bankingLabel}</span>
           <span className={`meta-pill ${state.housingTier === 'shelter' ? 'warning' : ''}`}>{housingLabel}</span>
-          <span className="meta-pill wide">{sideWorkLabel}</span>
+          {!compact ? <span className="meta-pill wide">{sideWorkLabel}</span> : null}
         </div>
         <div className="hero-actions">
           <button
@@ -60,20 +70,34 @@ export function HeroPanel({ state, currentJob, dispatch }: Props) {
         </div>
       </div>
 
-      <div className="hero-side">
+      <div className="hero-side session-summary">
         <div className="month-badge">Week {state.week} | Month {state.month} | W{state.weekOfMonth}</div>
         <div className="hero-side-grid">
-          <div className="hero-stat wide">
-            <span>Current job</span>
+          <div className="hero-stat wide lane-stat">
+            <span>What you're doing</span>
             <strong>{currentJob.title}</strong>
           </div>
-          <div className="hero-stat">
-            <span>Open days</span>
-            <strong>{state.actionPoints}</strong>
+          <div className="hero-stat cash-stat">
+            <span>Cash</span>
+            <strong>{money(state.cash)}</strong>
           </div>
-          <div className="hero-stat">
+          <div className="hero-stat runway-stat">
             <span>Weekly runway</span>
             <strong className={weeklyRunway >= 0 ? 'positive' : 'negative'}>{money(weeklyRunway)}</strong>
+          </div>
+          <div className="hero-stat debt-stat">
+            <span>Debt</span>
+            <strong className={state.debt > 0 ? 'negative' : 'positive'}>{money(state.debt)}</strong>
+          </div>
+          <div className="hero-stat buffer-stat">
+            <span>Buffer</span>
+            <strong className={state.cash + state.savingsBalance >= 500 ? 'positive' : undefined}>
+              {money(state.cash + state.savingsBalance)} / $500
+            </strong>
+          </div>
+          <div className="hero-stat open-days-stat">
+            <span>Open days</span>
+            <strong>{state.actionPoints}</strong>
           </div>
         </div>
       </div>

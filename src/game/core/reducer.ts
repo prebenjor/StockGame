@@ -190,7 +190,7 @@ function appendMarketHistory(state: Pick<GameState, 'marketHistory'>, market: Ga
             month,
             price: stock.price,
           },
-        ].slice(-52),
+        ],
       ]
     }),
   )

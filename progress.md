@@ -111,13 +111,72 @@ Original prompt: Build a fun comprehensive browser stock/wealth game where the p
 - Verified the week-hub pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
 - Browser validation for the lighter overview:
   - `output/web-game-overview-hub/state-0.json` shows `activeView: "overview"` and `activeSubtab: "hub"`.
-  - `output/web-game-overview-hub/shot-0.png` confirmed the top of the screen is materially lighter.
-  - `output/web-game-overview-hub-full/shot-0.png` confirmed the full landing screen now reads as a week hub with fewer modules and clearer choices.
+- `output/web-game-overview-hub/shot-0.png` confirmed the top of the screen is materially lighter.
+- `output/web-game-overview-hub-full/shot-0.png` confirmed the full landing screen now reads as a week hub with fewer modules and clearer choices.
+- Expanded the work layer with a broader visual roster in `src/features/career/data.ts`.
+- Added new main jobs with matching imagery:
+  - `Hotel Front Desk`
+  - `Local Dispatch Coordinator`
+  - `Leasing Coordinator`
+  - `Operations Assistant`
+- Added new recurring side work with matching imagery:
+  - `Morning Bakery Prep`
+  - `Night Auditor Shift`
+  - `Leasing Runner`
+  - `Remote QA Sweep`
+  - `Open House Host`
+  - `Tax Season Clerk`
+- Added new one-off gigs with matching imagery:
+  - `Promo Crew Setup`
+  - `Inventory Count Night`
+  - `Property Showing Assist`
+  - `Bookkeeping Cleanup Sprint`
+  - `Landing Page Build`
+  - `Turnover Reset`
+- Verified the expanded career roster with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Ran the shared Playwright client against the Career screen and captured `output/web-game-career-roster/shot-0.png` plus `state-0.json`.
+- Browser-exported state confirms the expanded job lane is live with `activeView: "career"` and `toolbarSummary: "12 job tracks"`. No `errors-*.json` files were generated for that run.
+- Rebuilt the market-chart layer around explicit chart windows instead of the old hard-coded 12-point sparkline slice.
+- Added shared range helpers in `src/features/market/chartRanges.ts` with `1M`, `YTD`, `1Y`, `3Y`, `5Y`, and `All` windows. `All` is now real because market history is no longer truncated to 52 weeks in the reducer.
+- Upgraded `SparklineChart` to support fixed `hero`, `card`, and `compact` variants plus subtle gridlines, which lets the market cards use a uniform chart footprint instead of stretching unpredictably.
+- Reworked `src/features/market/MarketPanel.tsx` so:
+  - `chartRange` is remembered in stored market UI state (`street-to-stock-market-ui-v2`)
+  - every visible market chart obeys the same selected range
+  - Overview now has board search, type filtering, sorting, and equal-size comparison cards
+  - Watchlist and Exchange cards show range-based performance instead of only the current weekly move
+- Updated `render_game_to_text` in `src/App.tsx` so the exported browser state now includes `selectedMarketRange` and the visible range slice rather than always sending the last 12 history points.
+- Added `playwright-scenario-market-ranges.json` for the shared market validation path.
+- Re-verified with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Ran the shared Playwright client against the built preview with `#tab-market` pre-click and captured `output/web-game-market-ranges/shot-0.png` plus `state-0.json`.
+- Browser-exported state confirms the upgraded market view is live with `activeView: "market"`, `activeSubtab: "overview"`, `selectedMarketRange: "1y"`, and a visible history slice that survives a week advance. No `errors-*.json` files were generated for that run.
+- Rebuilt the top-of-app shell into one integrated sticky game header instead of a separate hero card, summary strip, and tab row.
+- Removed the slogan-style framing from the header and rewrote it as a plain session-status surface centered on:
+  - week / month / week-slot timeline
+  - what you are doing now
+  - cash / weekly runway / debt / buffer / open days
+  - advance / reset actions
+  - top-level section tabs inside the same shell
+- `SummaryStats` is no longer rendered as a separate floating strip; those values now live in `HeroPanel`.
+- Added a scroll-driven compact state to the integrated header shell. `render_game_to_text` now exports `ui.headerCompact` so browser validation can confirm the sticky state transitions.
+- Tightened the mobile sticky state after the first pass:
+  - kept the stat cards in a denser 2-column block
+  - hid the buffer card in compact mobile mode
+  - converted the top-level tabs into a horizontal swipe strip instead of a tall stacked block
+- Added `playwright-scenario-header-shell.json` for the shared client’s no-op header validation path.
+- Re-verified after the sticky-header pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Shared Playwright validation:
+  - `output/web-game-header-shell-v2/state-0.json` shows the rebuilt top shell on `activeView: "overview"` with `ui.headerCompact: false`
+- Direct browser captures:
+  - `output/web-game-header-shell-v2/desktop-top.png` shows the integrated expanded top shell
+  - `output/web-game-header-shell-v2/desktop-scrolled.png` plus `desktop-scrolled-state.json` confirm the compact sticky state with `ui.headerCompact: true`
+  - `output/web-game-header-shell-v2/mobile-scrolled.png` confirms the tighter mobile sticky shell with horizontally scrollable top-level tabs
+- No `errors-*.json` files were generated during the sticky-header validation runs.
 
 TODO
 - Add deeper browser coverage for subtab switching itself. The shared Playwright client can validate the new UI state export already, but a richer direct Playwright pass would let us click specific subtabs and filters instead of only validating defaults plus week advancement.
 - Add a direct browser check for the Banking `Debt` subtab empty state once we have a richer subtab-click harness; current validation proves the debt-free opener through exported state and default-screen rendering, but not through an automated Debt-subtab click.
 - Decide whether the hints dock should reserve more horizontal space or collapse automatically after first use on desktop. It is hideable now, but it still occupies a meaningful part of the right edge visually.
 - Consider richer market interactions next: subtab-level validation for `Watchlist`, `News`, and `Exchange`, plus maybe a symbol detail modal or larger focus chart interaction if the market needs more depth.
+- The market range row works and is exported, but the shared Playwright client still makes it awkward to directly click arbitrary range chips or search inputs after switching tabs. A small local direct-click harness would make chart-range and market-search coverage much stronger.
 - If the new themed shells feel too wordy, cut more explanatory body copy now that the IA is doing more of the organizational work.
 - The Personal section currently focuses on active recovery and social/leisure stabilization. If it proves fun, the next good extension is low-stakes hobby or routine chains that add flavor without turning downtime into another income engine.

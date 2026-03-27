@@ -319,21 +319,6 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
           )}
         </article>
 
-        <article className="hub-card routes">
-          <div className="card-topline">
-            <h3>Go deeper</h3>
-            <span>Systems</span>
-          </div>
-          <div className="jump-row">
-            <button className="mini-button ghost" type="button" onClick={() => onNavigate('career')}>Career</button>
-            <button className="mini-button ghost" type="button" onClick={() => onNavigate('personal')}>Personal</button>
-            <button className="mini-button ghost" type="button" onClick={() => onNavigate('banking')}>Banking</button>
-            <button className="mini-button ghost" type="button" onClick={() => onNavigate('market')}>Market</button>
-            <button className="mini-button ghost" type="button" onClick={() => onNavigate('network')}>Network</button>
-            <button className="mini-button ghost" type="button" onClick={() => onNavigate('lifestyle')}>Lifestyle</button>
-          </div>
-        </article>
-
         <article className="hub-card events">
           <div className="card-topline">
             <h3>Recent beats</h3>

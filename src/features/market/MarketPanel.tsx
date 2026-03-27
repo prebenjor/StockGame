@@ -7,6 +7,7 @@ import { money, price } from '../../game/core/format'
 import type { GameAction, GameState, MarketHistoryPoint } from '../../game/core/types'
 import { getTradingFee, hasStableHousing } from '../../game/core/utils'
 import { SECTION_THEMES } from '../../ui/sectionThemes'
+import { MARKET_CHART_RANGES, type MarketChartRange, getMarketRangeChange, toMarketChartPoints } from './chartRanges'
 
 type Props = {
   state: GameState
@@ -17,7 +18,9 @@ type MarketTab = 'overview' | 'watchlist' | 'news' | 'exchange'
 
 type MarketUiState = {
   tab: MarketTab
+  chartRange: MarketChartRange
   search: string
+  overviewType: 'all' | 'stock' | 'etf'
   exchangeType: 'all' | 'stock' | 'etf'
   watchlistType: 'all' | 'stock' | 'etf'
   sector: 'all' | string
@@ -40,7 +43,9 @@ const MARKET_TABS = [
 
 const MARKET_UI_DEFAULT: MarketUiState = {
   tab: 'overview',
+  chartRange: '1y',
   search: '',
+  overviewType: 'all',
   exchangeType: 'all',
   watchlistType: 'all',
   sector: 'all',
@@ -54,16 +59,14 @@ const MARKET_UI_DEFAULT: MarketUiState = {
   selectedSymbol: 'CITY',
 }
 
-function buildChartPoints(points: MarketHistoryPoint[]) {
-  return points.slice(-12).map((point) => ({
-    label: `M${point.month} W${((point.week - 1) % 4) + 1}`,
-    value: point.price,
-  }))
-}
-
 function getSearchMatch(text: string, search: string) {
   if (!search.trim()) return true
   return text.toLowerCase().includes(search.trim().toLowerCase())
+}
+
+function formatPercent(value: number) {
+  const rounded = Math.round(value * 10) / 10
+  return `${rounded >= 0 ? '+' : ''}${rounded.toFixed(1)}%`
 }
 
 function sortMarketRows(
@@ -84,26 +87,42 @@ function sortMarketRows(
   })
 }
 
+function getRangeLabel(range: MarketChartRange) {
+  return MARKET_CHART_RANGES.find((option) => option.value === range)?.label ?? 'All'
+}
+
+function getChartPoints(history: MarketHistoryPoint[], range: MarketChartRange, currentWeek: number) {
+  return toMarketChartPoints(history, range, currentWeek)
+}
+
 export function MarketPanel({ state, dispatch }: Props) {
   const theme = SECTION_THEMES.market
   const fee = getTradingFee(state)
   const sectors = ['all', ...Array.from(new Set(state.market.map((stock) => stock.sector))).sort()]
-  const [ui, setUi] = useStoredUiState<MarketUiState>('street-to-stock-market-ui-v1', MARKET_UI_DEFAULT)
+  const [ui, setUi] = useStoredUiState<MarketUiState>('street-to-stock-market-ui-v2', MARKET_UI_DEFAULT)
 
   const heldSymbols = Object.keys(state.holdings).filter((symbol) => (state.holdings[symbol]?.shares ?? 0) > 0)
   const fallbackSelectedSymbol = state.watchlist[0] ?? heldSymbols[0] ?? state.market[0]?.symbol ?? 'CITY'
-  const selectedSymbol = state.market.some((stock) => stock.symbol === ui.selectedSymbol) ? ui.selectedSymbol : fallbackSelectedSymbol
-  const selectedStock = state.market.find((stock) => stock.symbol === selectedSymbol) ?? state.market[0]
-  const selectedHolding = state.holdings[selectedSymbol]
-  const selectedPoints = buildChartPoints(state.marketHistory[selectedSymbol] ?? [])
 
-  const watchlistRows = sortMarketRows(
-    state.market.filter((stock) => state.watchlist.includes(stock.symbol)).filter((stock) => {
-      if (!getSearchMatch(`${stock.symbol} ${stock.name} ${stock.sector}`, ui.search)) return false
-      if (ui.watchlistType !== 'all' && stock.assetType !== ui.watchlistType) return false
-      if (ui.heldOnly && !state.holdings[stock.symbol]) return false
+  const overviewRows = sortMarketRows(
+    state.market.filter((stock) => {
+      if (!getSearchMatch(`${stock.symbol} ${stock.name} ${stock.sector} ${stock.thesis}`, ui.search)) return false
+      if (ui.overviewType !== 'all' && stock.assetType !== ui.overviewType) return false
       return true
     }),
+    ui.sort,
+    state.holdings,
+  )
+
+  const watchlistRows = sortMarketRows(
+    state.market
+      .filter((stock) => state.watchlist.includes(stock.symbol))
+      .filter((stock) => {
+        if (!getSearchMatch(`${stock.symbol} ${stock.name} ${stock.sector}`, ui.search)) return false
+        if (ui.watchlistType !== 'all' && stock.assetType !== ui.watchlistType) return false
+        if (ui.heldOnly && !state.holdings[stock.symbol]) return false
+        return true
+      }),
     ui.sort,
     state.holdings,
   )
@@ -131,7 +150,19 @@ export function MarketPanel({ state, dispatch }: Props) {
     state.holdings,
   )
 
-  const topMovers = state.market.slice().sort((left, right) => Math.abs(right.change) - Math.abs(left.change)).slice(0, 4)
+  const storedSelectedSymbol = state.market.some((stock) => stock.symbol === ui.selectedSymbol) ? ui.selectedSymbol : fallbackSelectedSymbol
+  const selectedSymbol =
+    ui.tab === 'overview'
+      ? (overviewRows.find((stock) => stock.symbol === storedSelectedSymbol)?.symbol ?? overviewRows[0]?.symbol ?? fallbackSelectedSymbol)
+      : storedSelectedSymbol
+  const selectedStock = state.market.find((stock) => stock.symbol === selectedSymbol) ?? state.market[0]
+  const selectedHolding = state.holdings[selectedSymbol]
+  const selectedPoints = getChartPoints(state.marketHistory[selectedSymbol] ?? [], ui.chartRange, state.week)
+  const selectedRangeChange = getMarketRangeChange(state.marketHistory[selectedSymbol] ?? [], ui.chartRange, state.week)
+  const rangeLabel = getRangeLabel(ui.chartRange)
+
+  const focusRows = overviewRows.slice(0, 6)
+  const topMover = state.market.slice().sort((left, right) => Math.abs(right.change) - Math.abs(left.change))[0]
   const holdingsValue = state.market.reduce((total, stock) => {
     const holding = state.holdings[stock.symbol]
     return total + (holding ? holding.shares * stock.price : 0)
@@ -142,65 +173,79 @@ export function MarketPanel({ state, dispatch }: Props) {
   }, 0)
 
   const toolbarFilters: ToolbarFilter[] =
-    ui.tab === 'watchlist'
+    ui.tab === 'overview'
       ? [
           {
-            id: 'watchlist-type',
+            id: 'overview-type',
             label: 'Type',
             type: 'select',
-            value: ui.watchlistType,
+            value: ui.overviewType,
             options: [
               { value: 'all', label: 'All assets' },
               { value: 'stock', label: 'Stocks' },
               { value: 'etf', label: 'ETFs' },
             ],
-            onChange: (value) => setUi((current) => ({ ...current, watchlistType: value as MarketUiState['watchlistType'] })),
-          },
-          {
-            id: 'watchlist-held',
-            label: 'Held only',
-            type: 'toggle',
-            checked: ui.heldOnly,
-            onChange: (checked) => setUi((current) => ({ ...current, heldOnly: checked })),
+            onChange: (value) => setUi((current) => ({ ...current, overviewType: value as MarketUiState['overviewType'] })),
           },
         ]
-      : ui.tab === 'news'
+      : ui.tab === 'watchlist'
         ? [
             {
-              id: 'news-type',
-              label: 'Event',
+              id: 'watchlist-type',
+              label: 'Type',
               type: 'select',
-              value: ui.newsType,
+              value: ui.watchlistType,
               options: [
-                { value: 'all', label: 'All events' },
-                { value: 'earnings', label: 'Earnings' },
-                { value: 'watchlist', label: 'Watchlist alerts' },
+                { value: 'all', label: 'All assets' },
+                { value: 'stock', label: 'Stocks' },
+                { value: 'etf', label: 'ETFs' },
               ],
-              onChange: (value) => setUi((current) => ({ ...current, newsType: value as MarketUiState['newsType'] })),
+              onChange: (value) => setUi((current) => ({ ...current, watchlistType: value as MarketUiState['watchlistType'] })),
             },
             {
-              id: 'news-tone',
-              label: 'Tone',
-              type: 'select',
-              value: ui.newsTone,
-              options: [
-                { value: 'all', label: 'All tones' },
-                { value: 'good', label: 'Positive' },
-                { value: 'bad', label: 'Negative' },
-                { value: 'neutral', label: 'Neutral' },
-              ],
-              onChange: (value) => setUi((current) => ({ ...current, newsTone: value as MarketUiState['newsTone'] })),
-            },
-            {
-              id: 'news-watchlist',
-              label: 'Watchlist only',
+              id: 'watchlist-held',
+              label: 'Held only',
               type: 'toggle',
-              checked: ui.watchlistOnlyNews,
-              onChange: (checked) => setUi((current) => ({ ...current, watchlistOnlyNews: checked })),
+              checked: ui.heldOnly,
+              onChange: (checked) => setUi((current) => ({ ...current, heldOnly: checked })),
             },
           ]
-        : ui.tab === 'exchange'
+        : ui.tab === 'news'
           ? [
+              {
+                id: 'news-type',
+                label: 'Event',
+                type: 'select',
+                value: ui.newsType,
+                options: [
+                  { value: 'all', label: 'All events' },
+                  { value: 'earnings', label: 'Earnings' },
+                  { value: 'watchlist', label: 'Watchlist alerts' },
+                ],
+                onChange: (value) => setUi((current) => ({ ...current, newsType: value as MarketUiState['newsType'] })),
+              },
+              {
+                id: 'news-tone',
+                label: 'Tone',
+                type: 'select',
+                value: ui.newsTone,
+                options: [
+                  { value: 'all', label: 'All tones' },
+                  { value: 'good', label: 'Positive' },
+                  { value: 'bad', label: 'Negative' },
+                  { value: 'neutral', label: 'Neutral' },
+                ],
+                onChange: (value) => setUi((current) => ({ ...current, newsTone: value as MarketUiState['newsTone'] })),
+              },
+              {
+                id: 'news-watchlist',
+                label: 'Watchlist only',
+                type: 'toggle',
+                checked: ui.watchlistOnlyNews,
+                onChange: (checked) => setUi((current) => ({ ...current, watchlistOnlyNews: checked })),
+              },
+            ]
+          : [
               {
                 id: 'exchange-type',
                 label: 'Type',
@@ -246,19 +291,18 @@ export function MarketPanel({ state, dispatch }: Props) {
                 onChange: (checked) => setUi((current) => ({ ...current, heldOnly: checked })),
               },
             ]
-          : []
 
   const toolbarSummary =
     ui.tab === 'overview'
-      ? `${Object.keys(state.holdings).length} positions | ${state.watchlist.length} watched | fee ${money(fee)}`
+      ? `${overviewRows.length} symbols in board | ${rangeLabel} view | ${selectedStock.symbol} focused`
       : ui.tab === 'watchlist'
-        ? `${watchlistRows.length} tracked names | ${ui.watchlistType === 'all' ? 'all assets' : ui.watchlistType}s | sorted ${ui.sort.replace('-', ' ')}`
+        ? `${watchlistRows.length} tracked names | ${rangeLabel} view | sorted ${ui.sort.replace('-', ' ')}`
         : ui.tab === 'news'
           ? `${newsRows.length} tape items | ${ui.newsType === 'all' ? 'all events' : ui.newsType} | ${ui.newsTone === 'all' ? 'all tones' : ui.newsTone}`
-          : `${exchangeRows.length} tradeable names | ${ui.exchangeType === 'all' ? 'full tape' : ui.exchangeType}s | sorted ${ui.sort.replace('-', ' ')}`
+          : `${exchangeRows.length} tradable names | ${rangeLabel} view | sorted ${ui.sort.replace('-', ' ')}`
 
   const sortOptions =
-    ui.tab === 'overview'
+    ui.tab === 'news'
       ? []
       : [
           { value: 'move-desc', label: 'Move high to low' },
@@ -268,6 +312,13 @@ export function MarketPanel({ state, dispatch }: Props) {
           { value: 'symbol', label: 'Symbol A-Z' },
         ]
 
+  const searchPlaceholder =
+    ui.tab === 'overview'
+      ? 'Search the market board by symbol, name, or sector'
+      : ui.tab === 'news'
+        ? 'Search tape by symbol or headline'
+        : 'Search symbols, names, and sectors'
+
   return (
     <section
       className="panel section-panel market-panel"
@@ -275,6 +326,7 @@ export function MarketPanel({ state, dispatch }: Props) {
       data-active-subtab={ui.tab}
       data-toolbar-summary={toolbarSummary}
       data-selected-symbol={selectedSymbol}
+      data-chart-range={ui.chartRange}
       style={
         {
           '--section-accent': theme.accent,
@@ -294,8 +346,8 @@ export function MarketPanel({ state, dispatch }: Props) {
         </div>
         <p>
           {state.bankAccount && hasStableHousing(state)
-            ? 'This side should read like a real desk now: one section for the tape, one for tracked names, one for the tradable universe, and one hero view for the symbol you are leaning on.'
-            : 'The market still leaks edge when your real life is messy, but the clutter is gone. Read the tape first, then decide whether to watch, buy, or stay patient.'}
+            ? 'This side should read like a real desk now: pick a time window, screen the board, then move into watchlist, news, or exchange for the actual trade decisions.'
+            : 'The market still leaks edge when your real life is messy, but the desk is cleaner now. Screen the board, set the chart range you trust, and only then decide whether to watch, buy, or wait.'}
         </p>
       </div>
 
@@ -307,11 +359,29 @@ export function MarketPanel({ state, dispatch }: Props) {
         theme={theme}
       />
 
+      <div className="market-range-bar" aria-label="Chart range selector">
+        <span className="panel-kicker">Chart Range</span>
+        <div className="market-range-row" role="group" aria-label="Select market chart range">
+          {MARKET_CHART_RANGES.map((option) => (
+            <button
+              key={option.value}
+              className={`mini-button market-range-chip ${ui.chartRange === option.value ? '' : 'ghost'}`}
+              type="button"
+              onClick={() => setUi((current) => ({ ...current, chartRange: option.value }))}
+              aria-pressed={ui.chartRange === option.value}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <p className="market-range-summary">All visible charts are locked to the {rangeLabel} window.</p>
+      </div>
+
       <SectionToolbar
         sectionId="market"
-        searchValue={ui.tab === 'overview' ? '' : ui.search}
-        searchPlaceholder={ui.tab === 'news' ? 'Search tape by symbol or headline' : 'Search symbols, names, and sectors'}
-        onSearchChange={ui.tab === 'overview' ? undefined : (value) => setUi((current) => ({ ...current, search: value }))}
+        searchValue={ui.search}
+        searchPlaceholder={searchPlaceholder}
+        onSearchChange={(value) => setUi((current) => ({ ...current, search: value }))}
         filters={toolbarFilters}
         sortOptions={sortOptions}
         sortValue={sortOptions.length > 0 ? ui.sort : undefined}
@@ -328,10 +398,7 @@ export function MarketPanel({ state, dispatch }: Props) {
                   <span className="panel-kicker">Selected symbol</span>
                   <h3>{selectedStock.symbol}</h3>
                 </div>
-                <span className={selectedStock.change >= 0 ? 'positive' : 'negative'}>
-                  {selectedStock.change >= 0 ? '+' : ''}
-                  {selectedStock.change}%
-                </span>
+                <span className={selectedRangeChange >= 0 ? 'positive' : 'negative'}>{formatPercent(selectedRangeChange)}</span>
               </div>
               <p>{selectedStock.name}. {selectedStock.thesis}</p>
               <SparklineChart
@@ -340,35 +407,40 @@ export function MarketPanel({ state, dispatch }: Props) {
                 lineColor={theme.chartLine}
                 fillColor={theme.chartFill}
                 className="hero-market-chart"
+                variant="hero"
+                footerLabel={`${rangeLabel} window`}
               />
               <div className="tag-row">
                 <span className="tag">{selectedStock.assetType === 'etf' ? 'ETF' : 'Stock'}</span>
                 <span className="tag">{selectedStock.sector}</span>
                 <span className="tag">{price(selectedStock.price)}</span>
+                <span className="tag">Week {formatPercent(selectedStock.change)}</span>
                 <span className="tag">Fee {money(fee)}</span>
                 {selectedHolding ? <span className="tag accent">Held {selectedHolding.shares} sh</span> : null}
                 {state.watchlist.includes(selectedStock.symbol) ? <span className="tag accent">Watching</span> : null}
               </div>
               <div className="market-selector-row">
-                {[...new Set([selectedSymbol, ...state.watchlist, ...heldSymbols, ...topMovers.map((stock) => stock.symbol)])]
-                  .slice(0, 6)
-                  .map((symbol) => (
+                {focusRows.length === 0 ? (
+                  <span className="tag">No symbols match the board screen.</span>
+                ) : (
+                  focusRows.map((stock) => (
                     <button
-                      key={symbol}
-                      className={`mini-button ${selectedSymbol === symbol ? '' : 'ghost'}`}
+                      key={stock.symbol}
+                      className={`mini-button ${selectedSymbol === stock.symbol ? '' : 'ghost'}`}
                       type="button"
-                      onClick={() => setUi((current) => ({ ...current, selectedSymbol: symbol }))}
+                      onClick={() => setUi((current) => ({ ...current, selectedSymbol: stock.symbol }))}
                     >
-                      {symbol}
+                      {stock.symbol}
                     </button>
-                  ))}
+                  ))
+                )}
               </div>
             </article>
 
             <article className="card market-overview-summary">
               <div className="card-topline">
                 <h3>Desk snapshot</h3>
-                <span>Week {state.week}</span>
+                <span>{rangeLabel}</span>
               </div>
               <div className="ledger-grid">
                 <div><span>Portfolio value</span><strong>{money(holdingsValue)}</strong></div>
@@ -376,71 +448,87 @@ export function MarketPanel({ state, dispatch }: Props) {
                 <div><span>Watchlist</span><strong>{state.watchlist.length}</strong></div>
                 <div><span>Monthly dividend run rate</span><strong>{money(monthlyDividendRunRate)}</strong></div>
               </div>
-              <p>Overview is for orientation: pick the symbol you care about, read the chart, then move into Watchlist, News, or Exchange for actual decisions.</p>
+              <p>Use this as the read layer: search the board, lock the chart window, compare symbols on equal-size cards, then move into Watchlist, News, or Exchange for the actual decision.</p>
+              {topMover ? (
+                <div className="market-summary-note">
+                  <strong>Top weekly mover</strong>
+                  <span>{topMover.symbol} {formatPercent(topMover.change)} this week.</span>
+                </div>
+              ) : null}
             </article>
           </div>
 
-          <div className="card-grid compact">
-            {topMovers.map((stock) => (
-              <article className="card market-mini-card" key={stock.symbol}>
-                <div className="card-topline">
-                  <h3>{stock.symbol}</h3>
-                  <span className={stock.change >= 0 ? 'positive' : 'negative'}>
-                    {stock.change >= 0 ? '+' : ''}
-                    {stock.change}%
-                  </span>
-                </div>
-                <SparklineChart
-                  compact
-                  points={buildChartPoints(state.marketHistory[stock.symbol] ?? [])}
-                  label={`${stock.symbol} compact chart`}
-                  lineColor={theme.chartLine}
-                  fillColor={theme.chartFill}
-                />
-                <div className="tag-row">
-                  <span className="tag">{price(stock.price)}</span>
-                  <span className="tag">{stock.assetType}</span>
-                </div>
-                <button className="mini-button ghost" type="button" onClick={() => setUi((current) => ({ ...current, selectedSymbol: stock.symbol }))}>
-                  Focus
-                </button>
+          <div className="card-grid compact market-card-grid">
+            {focusRows.length === 0 ? (
+              <article className="card empty-state">
+                <h3>No symbols match the board</h3>
+                <p>Broaden the search or reset the asset-type screen. The board is supposed to narrow your attention, not blank the market entirely.</p>
               </article>
-            ))}
+            ) : (
+              focusRows.map((stock) => (
+                <article className="card market-mini-card" key={stock.symbol}>
+                  <div className="card-topline">
+                    <h3>{stock.symbol}</h3>
+                    <span className={getMarketRangeChange(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week) >= 0 ? 'positive' : 'negative'}>
+                      {formatPercent(getMarketRangeChange(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week))}
+                    </span>
+                  </div>
+                  <p>{stock.name}</p>
+                  <SparklineChart
+                    variant="card"
+                    points={getChartPoints(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week)}
+                    label={`${stock.symbol} ${rangeLabel} chart`}
+                    lineColor={theme.chartLine}
+                    fillColor={theme.chartFill}
+                    footerLabel={`${rangeLabel} chart`}
+                  />
+                  <div className="tag-row">
+                    <span className="tag">{price(stock.price)}</span>
+                    <span className="tag">{stock.assetType}</span>
+                    <span className="tag">Week {formatPercent(stock.change)}</span>
+                  </div>
+                  <button className="mini-button ghost" type="button" onClick={() => setUi((current) => ({ ...current, selectedSymbol: stock.symbol }))}>
+                    Focus
+                  </button>
+                </article>
+              ))
+            )}
           </div>
         </div>
       ) : null}
 
       {ui.tab === 'watchlist' ? (
-        <div className="card-grid">
+        <div className="card-grid market-card-grid">
           {watchlistRows.length === 0 ? (
             <article className="card empty-state">
               <h3>No watchlist names match</h3>
-              <p>Broaden the filters or add more symbols. The watchlist is supposed to be your clean reading layer, not another full-market dump.</p>
+              <p>Broaden the search or loosen the held/type filters. The watchlist is supposed to be your clean reading layer, not another full-market dump.</p>
             </article>
           ) : (
             watchlistRows.map((stock) => {
               const holding = state.holdings[stock.symbol]
+              const chartChange = getMarketRangeChange(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week)
+
               return (
                 <article className="card market-watch-card" key={stock.symbol}>
                   <div className="card-topline">
                     <h3>{stock.symbol}</h3>
-                    <span className={stock.change >= 0 ? 'positive' : 'negative'}>
-                      {stock.change >= 0 ? '+' : ''}
-                      {stock.change}%
-                    </span>
+                    <span className={chartChange >= 0 ? 'positive' : 'negative'}>{formatPercent(chartChange)}</span>
                   </div>
                   <p>{stock.name}</p>
                   <SparklineChart
-                    compact
-                    points={buildChartPoints(state.marketHistory[stock.symbol] ?? [])}
+                    variant="card"
+                    points={getChartPoints(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week)}
                     label={`${stock.symbol} watchlist chart`}
                     lineColor={theme.chartLine}
                     fillColor={theme.chartFill}
+                    footerLabel={`${rangeLabel} chart`}
                   />
                   <div className="tag-row">
                     <span className="tag">{price(stock.price)}</span>
                     <span className="tag">{stock.assetType}</span>
                     <span className="tag">{stock.sector}</span>
+                    <span className="tag">Week {formatPercent(stock.change)}</span>
                     {holding ? <span className="tag accent">Held {holding.shares}</span> : null}
                   </div>
                   <div className="action-row">
@@ -486,7 +574,7 @@ export function MarketPanel({ state, dispatch }: Props) {
       ) : null}
 
       {ui.tab === 'exchange' ? (
-        <div className="card-grid">
+        <div className="card-grid market-card-grid">
           {exchangeRows.length === 0 ? (
             <article className="card empty-state">
               <h3>No names match</h3>
@@ -499,29 +587,29 @@ export function MarketPanel({ state, dispatch }: Props) {
               const buyOneReason = state.cash < stock.price + fee ? `Need ${money(Math.ceil(stock.price + fee))} cash` : undefined
               const buyFiveReason = state.cash < stock.price * 5 + fee ? `Need ${money(Math.ceil(stock.price * 5 + fee))} cash` : undefined
               const sellReason = !holding ? 'No shares owned' : undefined
+              const chartChange = getMarketRangeChange(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week)
 
               return (
-                <article className="card stock-card" key={stock.symbol}>
+                <article className="card stock-card market-stock-card" key={stock.symbol}>
                   <CardMedia imageUrl={stock.imageUrl} imageAlt={stock.imageAlt} fallbackLabel={stock.symbol} size="compact" />
                   <div className="card-topline">
                     <h3>{stock.symbol}</h3>
-                    <span className={stock.change >= 0 ? 'positive' : 'negative'}>
-                      {stock.change >= 0 ? '+' : ''}
-                      {stock.change}%
-                    </span>
+                    <span className={chartChange >= 0 ? 'positive' : 'negative'}>{formatPercent(chartChange)}</span>
                   </div>
                   <p>{stock.name}</p>
                   <SparklineChart
-                    compact
-                    points={buildChartPoints(state.marketHistory[stock.symbol] ?? [])}
+                    variant="card"
+                    points={getChartPoints(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week)}
                     label={`${stock.symbol} exchange chart`}
                     lineColor={theme.chartLine}
                     fillColor={theme.chartFill}
+                    footerLabel={`${rangeLabel} chart`}
                   />
                   <p>{stock.thesis}</p>
                   <div className="stock-meta">
                     <strong>{price(stock.price)}</strong>
                     <span>{stock.assetType === 'etf' ? `ETF | ${stock.sector}` : `Stock | ${stock.sector}`}</span>
+                    <span>Week {formatPercent(stock.change)}</span>
                     <span>Dividend {price(stock.dividend)}/share</span>
                   </div>
                   <div className="tag-row">
@@ -560,7 +648,7 @@ export function MarketPanel({ state, dispatch }: Props) {
                         </button>
                       </div>
                       <p className="action-hint">
-                        {buyOneReason ? `Blocked: ${buyOneReason}.` : 'Primary move: size small first unless the symbol is already on your board and the chart still fits your plan.'}
+                        {buyOneReason ? `Blocked: ${buyOneReason}.` : 'Primary move: size small first unless the name is already on your board and the range view still supports the setup.'}
                       </p>
                     </div>
                     <div className="action-section">

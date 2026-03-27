@@ -7,11 +7,13 @@ import { CareerPanel } from './features/career/CareerPanel'
 import { GIGS, SIDE_JOB_MAP } from './features/career/data'
 import { HintsDock } from './components/HintsDock'
 import { HeroPanel } from './features/dashboard/HeroPanel'
-import { SidePanel, SummaryStats } from './features/dashboard/OverviewPanels'
+import { SidePanel } from './features/dashboard/OverviewPanels'
 import { EducationPanel } from './features/education/EducationPanel'
 import { LedgerPanel } from './features/ledger/LedgerPanel'
 import { LifestylePanel } from './features/lifestyle/LifestylePanel'
 import { MarketPanel } from './features/market/MarketPanel'
+import type { MarketChartRange } from './features/market/chartRanges'
+import { sliceMarketHistory } from './features/market/chartRanges'
 import { NetworkPanel } from './features/network/NetworkPanel'
 import { PersonalPanel } from './features/personal/PersonalPanel'
 import { PERSONAL_ACTIONS } from './features/personal/data'
@@ -60,6 +62,7 @@ const VIEWS: Array<{ id: ViewId; label: string; kicker: string; accent: string; 
 function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, loadState)
   const [activeView, setActiveView] = useState<ViewId>('overview')
+  const [headerCompact, setHeaderCompact] = useState(false)
   const viewRefs = useRef<Array<HTMLButtonElement | null>>([])
   const stateRef = useRef(state)
   const activeViewRef = useRef(activeView)
@@ -75,6 +78,18 @@ function App() {
   useEffect(() => {
     activeViewRef.current = activeView
   }, [activeView])
+
+  useEffect(() => {
+    const syncHeaderCompact = () => {
+      setHeaderCompact(window.scrollY > 56)
+    }
+
+    syncHeaderCompact()
+    window.addEventListener('scroll', syncHeaderCompact, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', syncHeaderCompact)
+    }
+  }, [])
 
   const currentJob = getCurrentJob(state)
   const activeTheme = SECTION_THEMES[activeView]
@@ -312,10 +327,16 @@ function App() {
       const latestState = stateRef.current
       const latestActiveView = activeViewRef.current
       const activeSection = document.querySelector<HTMLElement>('#main-content [data-ui-section]')
+      const headerShell = document.querySelector<HTMLElement>('.game-header-shell')
       const toolbarSummary = activeSection?.dataset.toolbarSummary
       const selectedSymbol = activeSection?.dataset.selectedSymbol
       const activeSubtab = activeSection?.dataset.activeSubtab
+      const activeChartRange = activeSection?.dataset.chartRange as MarketChartRange | undefined
+      const activeHeaderCompact = headerShell?.dataset.headerCompact === 'true'
       const marketHistoryPoints = selectedSymbol ? latestState.marketHistory[selectedSymbol] ?? [] : []
+      const visibleMarketHistory = selectedSymbol && activeChartRange
+        ? sliceMarketHistory(marketHistoryPoints, activeChartRange, latestState.week)
+        : marketHistoryPoints
       const latestJob = getCurrentJob(latestState)
       const latestRunway = getWeeklyRunway(latestState)
       const creditCard = getCreditCardAccount(latestState)
@@ -387,7 +408,8 @@ function App() {
           bondHoldings: latestState.bondHoldings.length,
           watchlist: latestState.watchlist,
           selectedMarketSymbol: selectedSymbol ?? null,
-          selectedMarketHistory: marketHistoryPoints.slice(-12).map((point) => ({
+          selectedMarketRange: activeChartRange ?? null,
+          selectedMarketHistory: visibleMarketHistory.map((point) => ({
             week: point.week,
             month: point.month,
             price: point.price,
@@ -403,6 +425,7 @@ function App() {
         opportunities: latestState.opportunities.slice(0, 3).map((opportunity) => opportunity.title),
         ui: {
           toolbarSummary: toolbarSummary ?? null,
+          headerCompact: activeHeaderCompact,
         },
         recentLog: latestState.log.slice(0, 3).map((entry) => ({
           title: entry.title,
@@ -462,38 +485,39 @@ function App() {
         Skip to active section
       </a>
 
-      <HeroPanel state={state} currentJob={currentJob} dispatch={dispatch} />
-      <SummaryStats state={state} currentJob={currentJob} />
+      <div className={`game-header-shell ${headerCompact ? 'compact' : ''}`} data-header-compact={headerCompact ? 'true' : 'false'}>
+        <HeroPanel state={state} currentJob={currentJob} dispatch={dispatch} compact={headerCompact} />
 
-      <nav className="view-nav" aria-label="Game sections" role="tablist">
-        {VIEWS.map((view, index) => (
-          <button
-            key={view.id}
-            ref={(element) => {
-              viewRefs.current[index] = element
-            }}
-            className={`view-chip ${activeView === view.id ? 'active' : ''}`}
-            onClick={() => setActiveView(view.id)}
-            onKeyDown={(event) => handleViewKeyDown(event, index)}
-            type="button"
-            role="tab"
-            id={`tab-${view.id}`}
-            aria-selected={activeView === view.id}
-            aria-controls={`panel-${view.id}`}
-            tabIndex={activeView === view.id ? 0 : -1}
-            style={
-              {
-                '--chip-accent': view.accent,
-                '--chip-accent-soft': view.accentSoft,
-                '--chip-glow': view.glow,
-              } as React.CSSProperties
-            }
-          >
-            <span>{view.kicker}</span>
-            <strong>{view.label}</strong>
-          </button>
-        ))}
-      </nav>
+        <nav className="view-nav integrated" aria-label="Game sections" role="tablist">
+          {VIEWS.map((view, index) => (
+            <button
+              key={view.id}
+              ref={(element) => {
+                viewRefs.current[index] = element
+              }}
+              className={`view-chip ${activeView === view.id ? 'active' : ''}`}
+              onClick={() => setActiveView(view.id)}
+              onKeyDown={(event) => handleViewKeyDown(event, index)}
+              type="button"
+              role="tab"
+              id={`tab-${view.id}`}
+              aria-selected={activeView === view.id}
+              aria-controls={`panel-${view.id}`}
+              tabIndex={activeView === view.id ? 0 : -1}
+              style={
+                {
+                  '--chip-accent': view.accent,
+                  '--chip-accent-soft': view.accentSoft,
+                  '--chip-glow': view.glow,
+                } as React.CSSProperties
+              }
+            >
+              <span>{view.kicker}</span>
+              <strong>{view.label}</strong>
+            </button>
+          ))}
+        </nav>
+      </div>
 
       <main
         className="content-shell"

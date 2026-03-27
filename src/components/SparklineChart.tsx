@@ -9,7 +9,9 @@ type Props = {
   fillColor?: string
   className?: string
   label: string
-  compact?: boolean
+  variant?: 'hero' | 'card' | 'compact'
+  footerLabel?: string
+  footerChange?: string
 }
 
 function buildPath(points: Point[], width: number, height: number) {
@@ -39,10 +41,13 @@ export function SparklineChart({
   fillColor = 'rgba(35, 128, 171, 0.14)',
   className = '',
   label,
-  compact = false,
+  variant = 'card',
+  footerLabel,
+  footerChange,
 }: Props) {
-  const width = 180
-  const height = compact ? 44 : 96
+  const isCompact = variant === 'compact'
+  const width = variant === 'hero' ? 420 : 280
+  const height = variant === 'hero' ? 192 : isCompact ? 68 : 112
   const path = buildPath(points, width, height)
   const areaPath = buildArea(path, width, height)
   const latest = points[points.length - 1]
@@ -50,15 +55,22 @@ export function SparklineChart({
   const trend = previous && latest ? latest.value - previous.value : 0
 
   return (
-    <div className={`sparkline ${compact ? 'compact' : ''} ${className}`.trim()} aria-label={label}>
+    <div className={`sparkline sparkline-${variant} ${className}`.trim()} aria-label={label}>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-hidden="true">
+        {height >= 100 ? (
+          <>
+            <line x1="0" y1={height * 0.25} x2={width} y2={height * 0.25} className="sparkline-gridline" />
+            <line x1="0" y1={height * 0.5} x2={width} y2={height * 0.5} className="sparkline-gridline" />
+            <line x1="0" y1={height * 0.75} x2={width} y2={height * 0.75} className="sparkline-gridline" />
+          </>
+        ) : null}
         {areaPath ? <path d={areaPath} fill={fillColor} /> : null}
-        {path ? <path d={path} fill="none" stroke={lineColor} strokeWidth={compact ? 2 : 3} strokeLinecap="round" strokeLinejoin="round" /> : null}
+        {path ? <path d={path} fill="none" stroke={lineColor} strokeWidth={isCompact ? 2.5 : variant === 'hero' ? 5 : 3.5} strokeLinecap="round" strokeLinejoin="round" /> : null}
       </svg>
-      {!compact && latest ? (
+      {variant !== 'compact' && latest ? (
         <div className="sparkline-meta">
-          <strong>{latest.label}</strong>
-          <span className={trend >= 0 ? 'positive' : 'negative'}>{trend >= 0 ? 'Up trend' : 'Down trend'}</span>
+          <strong>{footerLabel ?? latest.label}</strong>
+          <span className={trend >= 0 ? 'positive' : 'negative'}>{footerChange ?? (trend >= 0 ? 'Up trend' : 'Down trend')}</span>
         </div>
       ) : null}
     </div>
