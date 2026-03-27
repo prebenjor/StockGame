@@ -94,7 +94,7 @@ export function NetworkPanel({ state, dispatch }: Props) {
           <span className="panel-kicker">Network</span>
           <h2>Contacts, pressure, and openings</h2>
         </div>
-        <p>This section should feel like a relationship board. Separate who helps you, who pushes back, and what opportunities are live right now.</p>
+        <p>People matter here. Some help, some compete with you, and some quietly open doors if you stay in touch long enough.</p>
       </div>
 
       <SectionTabs
@@ -159,7 +159,7 @@ export function NetworkPanel({ state, dispatch }: Props) {
           {opportunities.length === 0 ? (
             <article className="card empty-state">
               <h3>No live opportunities</h3>
-              <p>Build relationships and keep progressing. The better your network, the more asymmetrical deals show up.</p>
+              <p>Nothing is live right now. Keep building trust and showing up, and better openings will start to appear.</p>
             </article>
           ) : (
             opportunities.map((opportunity) => (

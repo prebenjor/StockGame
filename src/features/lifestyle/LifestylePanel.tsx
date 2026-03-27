@@ -145,7 +145,7 @@ export function LifestylePanel({ state, dispatch }: Props) {
           <span className="panel-kicker">Lifestyle</span>
           <h2>Survival setup</h2>
         </div>
-        <p>The feel here should be domestic and practical. Each subtab isolates one survival layer so the player can tune housing, transport, food, recovery, and basic banking without wading through everything at once.</p>
+        <p>This is your baseline. Housing, transport, food, recovery, and basic banking all shape how hard each week feels before you make a single active choice.</p>
       </div>
 
       <SectionTabs
@@ -167,8 +167,8 @@ export function LifestylePanel({ state, dispatch }: Props) {
             </div>
             <p>
               {state.bankAccount
-                ? 'You have a basic account, which keeps trading fees and financing friction under control.'
-                : 'You can still trade and hustle, but fees are worse and financing is more predatory until you open an account.'}
+                ? 'You have a basic account now, which makes saving, trading, and borrowing less clumsy.'
+                : 'You can still get by without an account, but it keeps everyday money friction higher than it needs to be.'}
             </p>
             <div className="tag-row">
               <span className="tag">Living Cost {money(getLivingCost(state))}/mo</span>

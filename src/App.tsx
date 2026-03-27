@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useReducer, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import './App.css'
 import { BankingPanel } from './features/banking/BankingPanel'
@@ -62,7 +62,10 @@ const VIEWS: Array<{ id: ViewId; label: string; kicker: string; accent: string; 
 function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, loadState)
   const [activeView, setActiveView] = useState<ViewId>('overview')
-  const [headerCompact, setHeaderCompact] = useState(false)
+  const [mobileRailOpen, setMobileRailOpen] = useState(false)
+  const [desktopRailVisible, setDesktopRailVisible] = useState(() =>
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 901px)').matches,
+  )
   const viewRefs = useRef<Array<HTMLButtonElement | null>>([])
   const stateRef = useRef(state)
   const activeViewRef = useRef(activeView)
@@ -80,30 +83,58 @@ function App() {
   }, [activeView])
 
   useEffect(() => {
-    const syncHeaderCompact = () => {
-      setHeaderCompact(window.scrollY > 56)
+    if (typeof window === 'undefined') return
+    const mediaQuery = window.matchMedia('(min-width: 901px)')
+    const syncRailMode = (event?: MediaQueryListEvent) => {
+      const matches = event?.matches ?? mediaQuery.matches
+      setDesktopRailVisible(matches)
+      if (matches) {
+        setMobileRailOpen(false)
+      }
     }
 
-    syncHeaderCompact()
-    window.addEventListener('scroll', syncHeaderCompact, { passive: true })
+    syncRailMode()
+    mediaQuery.addEventListener('change', syncRailMode)
     return () => {
-      window.removeEventListener('scroll', syncHeaderCompact)
+      mediaQuery.removeEventListener('change', syncRailMode)
     }
   }, [])
 
+  useEffect(() => {
+    const handleEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape' && mobileRailOpen) {
+        setMobileRailOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [mobileRailOpen])
+
   const currentJob = getCurrentJob(state)
   const activeTheme = SECTION_THEMES[activeView]
+  const weeklyRunway = getWeeklyRunway(state)
+
+  const selectViewById = useCallback((viewId: ViewId) => {
+    setActiveView(viewId)
+    if (!desktopRailVisible) {
+      setMobileRailOpen(false)
+    }
+  }, [desktopRailVisible])
 
   const setViewByIndex = (index: number) => {
     const nextIndex = (index + VIEWS.length) % VIEWS.length
     const nextView = VIEWS[nextIndex]
-    setActiveView(nextView.id)
+    selectViewById(nextView.id)
     requestAnimationFrame(() => {
       viewRefs.current[nextIndex]?.focus()
     })
   }
 
   const advanceWeek = () => {
+    if (stateRef.current.weekPlanCommitted && stateRef.current.weekResolutionPhase === 'resolving') return
     startTransition(() => dispatch({ type: 'END_WEEK' }))
   }
 
@@ -141,7 +172,7 @@ function App() {
     const selectView = (index: number) => {
       const nextIndex = (index + VIEWS.length) % VIEWS.length
       const nextView = VIEWS[nextIndex]
-      setActiveView(nextView.id)
+      selectViewById(nextView.id)
       requestAnimationFrame(() => {
         viewRefs.current[nextIndex]?.focus()
       })
@@ -208,6 +239,21 @@ function App() {
         const latestState = stateRef.current
         const latestView = activeViewRef.current
         const key = event.key.toLowerCase()
+
+        if (latestView === 'overview') {
+          if (key === 'a') {
+            if (!latestState.weekPlanCommitted && latestState.plannedWeekSlots.some(Boolean)) {
+              dispatch({ type: 'COMMIT_WEEK_PLAN' })
+            } else if (!latestState.weekPlanCommitted) {
+              dispatch({ type: 'END_WEEK' })
+            }
+          }
+
+          if (key === 'b' && !latestState.weekPlanCommitted) {
+            dispatch({ type: 'CANCEL_WEEK_PLAN' })
+          }
+          return
+        }
 
         if (latestView === 'career') {
           if (key === 'a') {
@@ -320,19 +366,17 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown)
     }
-  }, [])
+  }, [desktopRailVisible, selectViewById])
 
   useEffect(() => {
     window.render_game_to_text = () => {
       const latestState = stateRef.current
       const latestActiveView = activeViewRef.current
       const activeSection = document.querySelector<HTMLElement>('#main-content [data-ui-section]')
-      const headerShell = document.querySelector<HTMLElement>('.game-header-shell')
       const toolbarSummary = activeSection?.dataset.toolbarSummary
       const selectedSymbol = activeSection?.dataset.selectedSymbol
       const activeSubtab = activeSection?.dataset.activeSubtab
       const activeChartRange = activeSection?.dataset.chartRange as MarketChartRange | undefined
-      const activeHeaderCompact = headerShell?.dataset.headerCompact === 'true'
       const marketHistoryPoints = selectedSymbol ? latestState.marketHistory[selectedSymbol] ?? [] : []
       const visibleMarketHistory = selectedSymbol && activeChartRange
         ? sliceMarketHistory(marketHistoryPoints, activeChartRange, latestState.week)
@@ -342,7 +386,7 @@ function App() {
       const creditCard = getCreditCardAccount(latestState)
       const creditUtilization = getCreditUtilization(latestState)
       const snapshot = {
-        coordinateSystem: 'No spatial coordinates. This is a UI-driven management sim with views indexed left-to-right from 0 to 10.',
+        coordinateSystem: 'No spatial coordinates. Desktop uses a fixed left rail and a fluid content pane. Mobile uses a compact top bar plus a drawer rail.',
         mode: 'management-sim',
         activeView: latestActiveView,
         activeViewIndex: VIEWS.findIndex((view) => view.id === latestActiveView),
@@ -369,6 +413,29 @@ function App() {
           bankAccount: latestState.bankAccount,
           personalActionsUsedThisWeek: latestState.personalActionsUsedThisWeek.map((id) => PERSONAL_ACTIONS.find((action) => action.id === id)?.title ?? id),
         },
+        weekPlan: latestState.plannedWeekSlots.map((slot) =>
+          slot
+            ? {
+                id: slot.id,
+                label: slot.label,
+                kind: slot.kind,
+              }
+            : null,
+        ),
+        weekPlanCommitted: latestState.weekPlanCommitted,
+        weekResolutionState: {
+          phase: latestState.weekResolutionPhase,
+          cursor: latestState.weekResolutionCursor,
+          results: latestState.weekResolutionResults.map((result) => ({
+            label: result.label,
+            tone: result.tone,
+          })),
+        },
+        activeWeekEventCards: latestState.activeWeekEventCards.map((card) => ({
+          title: card.title,
+          category: card.category,
+          options: card.options.map((option) => option.label),
+        })),
         finance: {
           cash: money(latestState.cash),
           savings: money(latestState.savingsBalance),
@@ -425,7 +492,8 @@ function App() {
         opportunities: latestState.opportunities.slice(0, 3).map((opportunity) => opportunity.title),
         ui: {
           toolbarSummary: toolbarSummary ?? null,
-          headerCompact: activeHeaderCompact,
+          desktopRailVisible,
+          mobileDrawerOpen: mobileRailOpen,
         },
         recentLog: latestState.log.slice(0, 3).map((entry) => ({
           title: entry.title,
@@ -450,11 +518,11 @@ function App() {
       delete window.render_game_to_text
       delete window.advanceTime
     }
-  }, [])
+  }, [desktopRailVisible, mobileRailOpen])
 
   const renderActiveView = () => {
     if (activeView === 'overview') {
-      return <SidePanel state={state} dispatch={dispatch} onNavigate={(view) => setActiveView(view)} />
+      return <SidePanel state={state} dispatch={dispatch} onNavigate={(view) => selectViewById(view)} />
     }
     if (activeView === 'career') return <CareerPanel state={state} dispatch={dispatch} />
     if (activeView === 'education') return <EducationPanel state={state} dispatch={dispatch} />
@@ -485,50 +553,62 @@ function App() {
         Skip to active section
       </a>
 
-      <div className={`game-header-shell ${headerCompact ? 'compact' : ''}`} data-header-compact={headerCompact ? 'true' : 'false'}>
-        <HeroPanel state={state} currentJob={currentJob} dispatch={dispatch} compact={headerCompact} />
+      <button
+        className={`mobile-rail-backdrop ${mobileRailOpen ? 'visible' : ''}`}
+        type="button"
+        aria-hidden={!mobileRailOpen}
+        tabIndex={mobileRailOpen ? 0 : -1}
+        onClick={() => setMobileRailOpen(false)}
+      />
 
-        <nav className="view-nav integrated" aria-label="Game sections" role="tablist">
-          {VIEWS.map((view, index) => (
-            <button
-              key={view.id}
-              ref={(element) => {
-                viewRefs.current[index] = element
-              }}
-              className={`view-chip ${activeView === view.id ? 'active' : ''}`}
-              onClick={() => setActiveView(view.id)}
-              onKeyDown={(event) => handleViewKeyDown(event, index)}
-              type="button"
-              role="tab"
-              id={`tab-${view.id}`}
-              aria-selected={activeView === view.id}
-              aria-controls={`panel-${view.id}`}
-              tabIndex={activeView === view.id ? 0 : -1}
-              style={
-                {
-                  '--chip-accent': view.accent,
-                  '--chip-accent-soft': view.accentSoft,
-                  '--chip-glow': view.glow,
-                } as React.CSSProperties
-              }
-            >
-              <span>{view.kicker}</span>
-              <strong>{view.label}</strong>
+      <div className="app-layout">
+        <aside className={`game-rail ${mobileRailOpen ? 'open' : ''}`} data-open={mobileRailOpen ? 'true' : 'false'}>
+          <HeroPanel
+            state={state}
+            currentJob={currentJob}
+            dispatch={dispatch}
+            activeView={activeView}
+            views={VIEWS}
+            viewRefs={viewRefs}
+            onSelectView={(viewId) => selectViewById(viewId as ViewId)}
+            onViewKeyDown={handleViewKeyDown}
+            mobileDrawerOpen={mobileRailOpen}
+            onCloseDrawer={() => setMobileRailOpen(false)}
+          />
+        </aside>
+
+        <div className="app-main">
+          <header className="mobile-topbar">
+            <button className="mobile-menu-button" type="button" onClick={() => setMobileRailOpen(true)} aria-label="Open game menu">
+              Menu
             </button>
-          ))}
-        </nav>
-      </div>
+            <div className="mobile-topbar-cluster">
+              <strong>
+                Week {state.week} / M{state.month} / W{state.weekOfMonth}
+              </strong>
+              <span>{currentJob.title}</span>
+            </div>
+            <div className="mobile-topbar-stats">
+              <span>Cash {money(state.cash)}</span>
+              <span>Runway {money(weeklyRunway)}</span>
+              <span>Open {state.actionPoints}</span>
+            </div>
+          </header>
 
-      <main
-        className="content-shell"
-        id="main-content"
-        role="tabpanel"
-        aria-labelledby={`tab-${activeView}`}
-        aria-live="polite"
-        tabIndex={-1}
-      >
-        {renderActiveView()}
-      </main>
+          <main
+            className="content-shell"
+            id="main-content"
+            role="tabpanel"
+            aria-labelledby={`tab-${activeView}`}
+            aria-live="polite"
+            tabIndex={-1}
+          >
+            <div className="content-stage" key={activeView}>
+              {renderActiveView()}
+            </div>
+          </main>
+        </div>
+      </div>
 
       <HintsDock />
     </div>

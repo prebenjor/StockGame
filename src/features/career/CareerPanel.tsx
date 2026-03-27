@@ -189,7 +189,7 @@ export function CareerPanel({ state, dispatch }: Props) {
           <span className="panel-kicker">Career</span>
           <h2>Work lanes and compounding skill</h2>
         </div>
-        <p>The career side should feel like a planner board. Split the long scroll into distinct lanes: main work, recurring side commitments, burst gigs, and progression bets.</p>
+        <p>This is where you piece together a living. Pick a main job, add steady side work, use gigs when you need a burst of cash, and study when you want a cleaner lane later.</p>
       </div>
 
       <SectionTabs

@@ -189,8 +189,73 @@ Original prompt: Build a fun comprehensive browser stock/wealth game where the p
   - `output/web-game-freeform-hub/overview-top.png` shows the rebuilt Overview with the visible player stats and route cards.
   - `output/web-game-freeform-hub/ledger-progress.png` plus `ledger-progress-state.json` confirm the new `Ledger > Progress` journal with `activeSubtab: "progress"`.
 - Browser-exported state still matches the visible UI and no `errors-*.json` files were generated for the freeform-hub validation run.
+- Implemented the remaining broad-path pass instead of stopping at the hub work:
+  - expanded work again with more jobs (`Clinic Reception`, `Accounts Clerk`), more recurring side work (`Pet Sitting Loop`, `Phone Support Queue`, `Book Cart Restock`), and more gigs (`Move-Out Clean`, `Data Entry Blitz`, `Bike Courier Loop`)
+  - added lower-entry property assets (`Parking Space`, `Storage Unit`) so property is a real early route instead of only a larger later jump
+  - added lower-entry businesses (`Weekend Resale Cart`, `Cleaning Route`) so the first owner-operated step is reachable before larger operators
+  - expanded the living ladder with new mid-tier lifestyle choices:
+    - housing: `Quiet Flatshare`
+    - transport: `Monthly Transit Pass`
+    - food: `Meal Prep`
+    - recovery: `Community Gym`
+- Rebalanced access and guidance around those additions:
+  - `canBuyProperty` and `canBuyBusiness` now actually respect reputation requirements instead of treating every listing/business as universally available
+  - route scoring and short hub notes now surface earlier property/business paths once cash and reputation are in range
+  - early broker/recruiter opportunity generation was softened so a small property lead or small business handoff can appear earlier instead of only much later
+  - education/course bridge costs were trimmed to keep study from feeling like a trap next to work-first play
+- Rewrote a broader slice of the app into plainer language:
+  - updated Banking, Lifestyle, Education, Property, Business, Network, Market, Career, Personal, Hero, and Overview copy to remove more design-doc/sim jargon and make the game read more naturally
+  - milestone wording is still softer, and the newer starter-path copy now points toward smaller first steps instead of only larger ambition
+- Added `playwright-scenario-path-viability.json` for section-jump validation.
+- Re-verified the broader content/balance/copy pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Browser validation for the new starter-path pass:
+  - Shared Playwright client:
+    - `output/web-game-business-direct/state-0.json` shows `activeView: "business"`, `activeSubtab: "opportunities"`, and `toolbarSummary: "6 operating targets"` after opening the Business tab directly.
+    - `output/web-game-business-direct/shot-0.png` confirms the new starter businesses render in-browser.
+  - Direct Playwright captures:
+    - `output/web-game-path-panels/property.png` plus `states.json` confirm the Property tab now shows `5 listings in view`, including lower-entry starter assets.
+    - `output/web-game-path-panels/business.png` plus `states.json` confirm the Business tab shows `6 operating targets`, including the new owner-operated starter options.
+    - `output/web-game-path-panels/lifestyle.png` plus `states.json` confirm the expanded living ladder renders under Lifestyle.
+  - No `errors-*.json` files were generated for the shared client validation runs.
 
 TODO
+- Replaced the desktop sticky header with a fixed left session rail and mobile top-bar/drawer shell.
+- The rail now holds the single timeline display, current job, money, a separate condition meter block, primary actions, and vertical section navigation.
+- Overview is now a real week-planning surface instead of a summary-only panel:
+  - `plannedWeekSlots`, `weekPlanCommitted`, `weekResolutionPhase`, `weekResolutionCursor`, `weekResolutionResults`, and `activeWeekEventCards` were added to game state.
+  - Added reducer actions for slot assignment/clearing, plan commit/cancel, event choices, and per-slot resolution.
+  - `Run This Week` now resolves the chosen open days one by one before the normal weekly settlement lands.
+  - Quick play still works: `Advance Week` and `Space` still resolve a plain week immediately when you do not want to plan.
+- Added a lightweight weekly event-card layer with short choices tied to housing, work, market, property, and business pressure.
+- Added calmer motion across the new shell and planner:
+  - drawer/rail slide
+  - section fade/translate
+  - overview card reveal stagger
+  - condition meter fill transitions
+  - visible resolution cards for planned-week outcomes
+  - reduced-motion fallback via `prefers-reduced-motion`
+- Updated exported browser state:
+  - removed `ui.headerCompact`
+  - added `ui.desktopRailVisible`
+  - added `ui.mobileDrawerOpen`
+  - added `weekPlan`, `weekPlanCommitted`, `activeWeekEventCards`, and `weekResolutionState`
+- Re-verified after the left-rail + weekly-planner pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Browser validation for the new shell/planner pass:
+  - Shared Playwright client:
+    - `output/web-game-left-rail-idle/state-0.json` confirms the default overview now exports the left-rail UI state with `desktopRailVisible: true`, `mobileDrawerOpen: false`, empty `weekPlan`, and live event cards.
+    - `output/web-game-left-rail-idle/shot-0.png` confirms the pinned desktop rail plus widened overview canvas.
+  - Direct Playwright captures:
+    - `output/web-game-rail-planner/desktop-overview.png` and `desktop-overview-state.json` show the new rail + planner at week start.
+    - `output/web-game-rail-planner/desktop-planned.png` and `desktop-planned-state.json` show a filled three-slot week plan.
+    - `output/web-game-rail-planner/desktop-settled.png` and `desktop-settled-state.json` confirm the visible resolution sequence landed and the final state exported `weekResolutionState.phase: "settled"` with four result cards.
+    - `output/web-game-rail-planner/desktop-market.png` and `desktop-market-state.json` confirm the Market panel now benefits from the reclaimed right-pane width.
+    - `output/web-game-rail-planner/mobile-topbar-viewport.png` confirms the compact mobile top bar.
+    - `output/web-game-rail-planner/mobile-drawer-open-viewport.png` and `mobile-drawer-state.json` confirm the mobile drawer opens with `mobileDrawerOpen: true`.
+  - No `errors-*.json` files were generated during the shared client run.
+- The old sticky-header path is now removed from the actual app shell, even though some legacy header CSS still exists unused in `App.css` and could be cleaned up later.
+- The planner/result loop currently uses a curated generic action catalog (`extra shift`, `best gig`, `sleep in`, `study block`, `market research`, etc.) rather than every deep system action being plannable yet. It is a strong first pass, but there is room to make more section-specific actions schedulable.
+- A planned week can still settle into debt if the chosen mix ignores cash pressure. That is intentional system-wise, but the next balancing pass may want clearer preview language or softer early-week defaults.
+- The mobile hints reveal pill was moved away from center-screen, but it still sits over content because it is fixed. If the cleaner shell is the priority, the next pass should probably collapse mobile hints into the drawer/top bar instead of keeping a floating pill.
 - Add deeper browser coverage for subtab switching itself. The shared Playwright client can validate the new UI state export already, but a richer direct Playwright pass would let us click specific subtabs and filters instead of only validating defaults plus week advancement.
 - Add a direct browser check for the Banking `Debt` subtab empty state once we have a richer subtab-click harness; current validation proves the debt-free opener through exported state and default-screen rendering, but not through an automated Debt-subtab click.
 - Decide whether the hints dock should reserve more horizontal space or collapse automatically after first use on desktop. It is hideable now, but it still occupies a meaningful part of the right edge visually.
@@ -198,3 +263,4 @@ TODO
 - The market range row works and is exported, but the shared Playwright client still makes it awkward to directly click arbitrary range chips or search inputs after switching tabs. A small local direct-click harness would make chart-range and market-search coverage much stronger.
 - If the new themed shells feel too wordy, cut more explanatory body copy now that the IA is doing more of the organizational work.
 - The Personal section currently focuses on active recovery and social/leisure stabilization. If it proves fun, the next good extension is low-stakes hobby or routine chains that add flavor without turning downtime into another income engine.
+- Revisit the Lifestyle card density. The expanded living ladder is useful, but the housing view in particular could probably use tighter vertical card packing now that there are more entries.

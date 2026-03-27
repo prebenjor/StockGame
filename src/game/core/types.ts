@@ -60,17 +60,19 @@ export type Upgrade = MediaAsset & {
   description: string
 }
 
-export type HousingTier = 'shelter' | 'shared' | 'studio' | 'apartment'
+export type HousingTier = 'shelter' | 'shared' | 'shared-plus' | 'studio' | 'apartment'
 
-export type TransportTier = 'foot' | 'bike' | 'scooter' | 'car'
+export type TransportTier = 'foot' | 'transit-pass' | 'bike' | 'scooter' | 'car'
 
-export type FoodTier = 'skip-meals' | 'cheap-eats' | 'balanced' | 'fresh'
+export type FoodTier = 'skip-meals' | 'cheap-eats' | 'meal-prep' | 'balanced' | 'fresh'
 
-export type WellnessTier = 'none' | 'stretch' | 'gym' | 'therapy'
+export type WellnessTier = 'none' | 'stretch' | 'community-gym' | 'gym' | 'therapy'
 
 export type LifestyleCategory = 'housing' | 'transport' | 'food' | 'wellness'
 
 export type PersonalActionCategory = 'recovery' | 'leisure' | 'social'
+
+export type WeekPlanKind = 'work' | 'recovery' | 'growth' | 'money'
 
 export type DebtKind = 'survival' | 'microloan' | 'mortgage' | 'tax' | 'overdraft' | 'student' | 'credit-card' | 'business-loan'
 
@@ -273,6 +275,52 @@ export type PersonalAction = MediaAsset & {
   storyFlag?: string
 }
 
+export type PlannedWeekAction = {
+  id: string
+  kind: WeekPlanKind
+  label: string
+  detail: string
+  sourceRef?: string
+  actionCost: number
+  preview?: string
+  oncePerWeek?: boolean
+}
+
+export type WeekEventOption = {
+  id: string
+  label: string
+  detail: string
+  cash?: number
+  stress?: number
+  energy?: number
+  health?: number
+  reputation?: number
+  knowledge?: number
+  bankTrust?: number
+  creditScore?: number
+  storyFlag?: string
+  contactId?: string
+  watchlistSymbol?: string
+}
+
+export type WeekEventCard = {
+  id: string
+  title: string
+  detail: string
+  category: 'work' | 'housing' | 'social' | 'market' | 'property' | 'business'
+  tone: Tone
+  options: WeekEventOption[]
+  resolvedOptionId?: string | null
+}
+
+export type WeekResolutionResult = {
+  id: string
+  label: string
+  detail: string
+  deltas: string[]
+  tone: Tone
+}
+
 export type MonthlySnapshot = {
   month: number
   cash: number
@@ -408,6 +456,12 @@ export type GameState = {
   foodTier: FoodTier
   wellnessTier: WellnessTier
   personalActionsUsedThisWeek: string[]
+  plannedWeekSlots: Array<PlannedWeekAction | null>
+  weekPlanCommitted: boolean
+  weekResolutionPhase: 'idle' | 'resolving' | 'settled'
+  weekResolutionCursor: number
+  weekResolutionResults: WeekResolutionResult[]
+  activeWeekEventCards: WeekEventCard[]
   jobId: string
   sideJobIds: string[]
   certifications: string[]
@@ -438,6 +492,12 @@ export type GameState = {
 
 export type GameAction =
   | { type: 'RESET' }
+  | { type: 'SET_WEEK_SLOT'; slotIndex: number; plannedAction: PlannedWeekAction }
+  | { type: 'CLEAR_WEEK_SLOT'; slotIndex: number }
+  | { type: 'COMMIT_WEEK_PLAN' }
+  | { type: 'CANCEL_WEEK_PLAN' }
+  | { type: 'RESOLVE_NEXT_WEEK_SLOT' }
+  | { type: 'CHOOSE_WEEK_EVENT_OPTION'; eventId: string; optionId: string }
   | { type: 'TAKE_JOB'; jobId: string }
   | { type: 'TAKE_SIDE_JOB'; sideJobId: string }
   | { type: 'DROP_SIDE_JOB'; sideJobId: string }

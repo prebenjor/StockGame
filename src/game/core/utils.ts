@@ -172,12 +172,16 @@ export function getLifestyleConditionShift(state: GameState) {
       ? { stress: 2, health: -1, energy: -1, reputation: -1 }
       : state.housingTier === 'shared'
         ? { stress: 1, health: 0, energy: 1, reputation: 0 }
+        : state.housingTier === 'shared-plus'
+          ? { stress: 0, health: 0, energy: 1, reputation: 1 }
         : state.housingTier === 'studio'
           ? { stress: -1, health: 1, energy: 2, reputation: 1 }
-          : { stress: -2, health: 1, energy: 3, reputation: 1 }
+          : { stress: -2, health: 1, energy: 3, reputation: 2 }
   const transportShift =
     state.transportTier === 'foot'
       ? { stress: 1, health: 0, energy: -1, reputation: 0 }
+      : state.transportTier === 'transit-pass'
+        ? { stress: 0, health: 0, energy: 0, reputation: 0 }
       : state.transportTier === 'bike'
         ? { stress: 0, health: 0, energy: 1, reputation: 0 }
         : state.transportTier === 'scooter'
@@ -188,6 +192,8 @@ export function getLifestyleConditionShift(state: GameState) {
       ? { stress: 2, health: -1, energy: -1, reputation: 0 }
       : state.foodTier === 'cheap-eats'
         ? { stress: 1, health: 0, energy: 0, reputation: 0 }
+        : state.foodTier === 'meal-prep'
+          ? { stress: 0, health: 1, energy: 1, reputation: 0 }
         : state.foodTier === 'balanced'
           ? { stress: -1, health: 1, energy: 1, reputation: 0 }
           : { stress: -1, health: 2, energy: 2, reputation: 0 }
@@ -196,6 +202,8 @@ export function getLifestyleConditionShift(state: GameState) {
       ? { stress: 1, health: 0, energy: 0, reputation: 0 }
       : state.wellnessTier === 'stretch'
         ? { stress: -1, health: 1, energy: 1, reputation: 0 }
+        : state.wellnessTier === 'community-gym'
+          ? { stress: -1, health: 1, energy: 1, reputation: 0 }
       : state.wellnessTier === 'gym'
           ? { stress: -1, health: 1, energy: 1, reputation: 0 }
           : { stress: -2, health: 1, energy: 2, reputation: 0 }
@@ -275,8 +283,8 @@ export function getPropertyValue(property: OwnedProperty, state: GameState) {
   return Math.round(template.cost * district.costMultiplier * momentumBonus * demandBonus * (0.72 + conditionBonus * 0.34 + crmBonus))
 }
 
-export function canBuyBusiness(_state: GameState, business: BusinessTemplate) {
-  return business.cost > 0
+export function canBuyBusiness(state: GameState, business: BusinessTemplate) {
+  return business.cost > 0 && state.reputation >= business.reputationRequired
 }
 
 export function getBusinessDebtBalance(state: Pick<GameState, 'debtAccounts'>, businessUid: string) {
@@ -387,7 +395,7 @@ export function getLockedReason(
   if (state.energy < 10) reasons.push('Too exhausted')
   if (state.health < 20) reasons.push('Health too low')
 
-  return reasons.length > 0 ? reasons.join(' • ') : null
+  return reasons.length > 0 ? reasons.join(' | ') : null
 }
 
 export function canTakeJob(state: GameState, job: Job) {
@@ -412,6 +420,6 @@ export function canTakeSideJob(state: GameState, sideJob: SideJob) {
   return totalCommitment <= maxCommitment
 }
 
-export function canBuyProperty(_state: GameState, property: PropertyTemplate) {
-  return property.cost > 0
+export function canBuyProperty(state: GameState, property: PropertyTemplate) {
+  return property.cost > 0 && state.reputation >= property.reputationRequired
 }

@@ -71,7 +71,7 @@ export function BusinessPanel({ state, dispatch }: Props) {
       ? `${buyableBusinesses.length} operating targets`
       : ui.tab === 'owned'
         ? `${ownedBusinesses.length} owned operators`
-        : `${state.businesses.filter((business) => getBusinessDebtBalance(state, business.uid) > 0).length} leveraged businesses`
+        : `${state.businesses.filter((business) => getBusinessDebtBalance(state, business.uid) > 0).length} businesses with loans`
 
   return (
     <section
@@ -94,7 +94,7 @@ export function BusinessPanel({ state, dispatch }: Props) {
           <span className="panel-kicker">Business</span>
           <h2>Operator board</h2>
         </div>
-        <p>This section should feel more operational than aspirational: what you can buy, what you already run, and where leverage is helping or hurting.</p>
+        <p>This is where you move from working for pay to running something yourself. Start small if you want to; the first little operation still counts.</p>
       </div>
 
       <SectionTabs
@@ -117,7 +117,7 @@ export function BusinessPanel({ state, dispatch }: Props) {
       {ui.tab === 'opportunities' ? (
         <div className="card-grid">
           {buyableBusinesses.map((business) => {
-            const buyReason = !canBuyBusiness(state, business) ? 'Business not available' : state.cash < business.cost ? `Need ${money(business.cost)} cash` : undefined
+            const buyReason = !canBuyBusiness(state, business) ? `Reach reputation ${business.reputationRequired}` : state.cash < business.cost ? `Need ${money(business.cost)} cash` : undefined
             return (
               <article className="card" key={business.id}>
                 <CardMedia imageUrl={business.imageUrl} imageAlt={business.imageAlt ?? business.title} fallbackLabel={business.title} />
@@ -130,6 +130,7 @@ export function BusinessPanel({ state, dispatch }: Props) {
                   <span className="tag">Revenue {money(business.baseRevenue)}</span>
                   <span className="tag">Expense {money(business.baseExpense)}</span>
                   <span className="tag">Rep {business.reputationRequired}+</span>
+                  {business.cost <= 3000 ? <span className="tag accent">Starter step</span> : null}
                 </div>
                 <div className="action-row">
                   {(business.preferredDistricts ?? Object.keys(DISTRICT_MAP)).map((districtId) => {
@@ -158,7 +159,7 @@ export function BusinessPanel({ state, dispatch }: Props) {
           {ownedBusinesses.length === 0 ? (
             <article className="card empty-state">
               <h3>No businesses yet</h3>
-              <p>Businesses should come after you can survive a bad month without selling everything else.</p>
+              <p>You can wait for a bigger move, or start with one of the tiny owner-run options first. Both are valid.</p>
             </article>
           ) : (
             ownedBusinesses.map((business) => {
@@ -214,7 +215,7 @@ export function BusinessPanel({ state, dispatch }: Props) {
           {state.businesses.length === 0 ? (
             <article className="card empty-state">
               <h3>No businesses to finance</h3>
-              <p>Get one operator running first. Financing matters once an actual business has some history behind it.</p>
+              <p>Get something running first. Financing only becomes interesting once there is an actual business to support.</p>
             </article>
           ) : (
             state.businesses.map((business) => {

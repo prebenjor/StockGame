@@ -122,6 +122,15 @@ export function hydrateState(fallback: GameState) {
       foodTier: parsed.foodTier ?? fallback.foodTier,
       wellnessTier: parsed.wellnessTier ?? fallback.wellnessTier,
       personalActionsUsedThisWeek: parsed.personalActionsUsedThisWeek ?? fallback.personalActionsUsedThisWeek,
+      plannedWeekSlots:
+        parsed.plannedWeekSlots?.length === fallback.plannedWeekSlots.length
+          ? parsed.plannedWeekSlots.map((slot) => (slot ? { ...slot } : null))
+          : fallback.plannedWeekSlots,
+      weekPlanCommitted: parsed.weekPlanCommitted ?? fallback.weekPlanCommitted,
+      weekResolutionPhase: parsed.weekResolutionPhase ?? fallback.weekResolutionPhase,
+      weekResolutionCursor: parsed.weekResolutionCursor ?? fallback.weekResolutionCursor,
+      weekResolutionResults: parsed.weekResolutionResults ?? fallback.weekResolutionResults,
+      activeWeekEventCards: parsed.activeWeekEventCards ?? fallback.activeWeekEventCards,
       sideJobIds:
         parsed.sideJobIds ??
         ((parsed as Partial<GameState> & { sideJobId?: string | null }).sideJobId

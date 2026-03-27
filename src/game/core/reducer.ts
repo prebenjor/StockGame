@@ -7,8 +7,9 @@ import { PERSONAL_ACTION_MAP } from '../../features/personal/data'
 import { PROPERTIES, PROPERTY_MAP, TENANT_PROFILES, TENANT_PROFILE_MAP } from '../../features/property/data'
 import { CONTACTS, DISTRICTS, DISTRICT_MAP, FOOD_SURVIVAL_EVENTS, HOUSING_SURVIVAL_EVENTS, LIFE_EVENTS, MONTHLY_EVENTS, RIVALS, SHARED_HOUSING_EVENTS, STARTER_BREAK_EVENTS, TRANSPORT_SURVIVAL_EVENTS } from '../../features/world/data'
 import { money } from './format'
+import { getWeekEventCards } from './planning'
 import { hydrateState } from './storage'
-import type { ContactState, Course, DebtAccount, GameAction, GameState, LifeEvent, MarketNews, MonthlySnapshot, Opportunity, Tone } from './types'
+import type { ContactState, Course, DebtAccount, GameAction, GameState, LifeEvent, MarketNews, MonthlySnapshot, Opportunity, Tone, WeekEventOption, WeekResolutionResult } from './types'
 import { canBuyBusiness, canBuyProperty, canOpenCreditCard, canRunGig, canTakeBusinessLoan, canTakeJob, canTakeSideJob, clamp, getBondValue, getBondYield, getBusinessDebtBalance, getBusinessMonthlyProfit, getBusinessValue, getComplianceRisk, getCreditCardAccount, getCreditUtilization, getDebtTotal, getInterestRate, getLifestyleConditionShift, getLifestyleSwitchCost, getLivingCost, getLockedReason, getMonthlyTaxEstimate, getNetWorth, getPassiveIncomePreview, getPropertyAskingPrice, getPropertyRent, getPropertyUpkeep, getPropertyValue, getRenovationBoost, getRenovationCost, getSavingsRate, getTradingFee, hasStableHousing, hasUpgrade, randomBetween, randomInt, randomItem, roundPrice, toWeeklyAmount, WEEKS_PER_MONTH } from './utils'
 
 function getEconomyPhase(state: Pick<GameState, 'unemployment' | 'housingDemand' | 'marketSentiment' | 'baseRate'>): GameState['economyPhase'] {
@@ -26,6 +27,17 @@ function pushLog(state: GameState, title: string, detail: string, tone: Tone = '
   }
 }
 
+function emptyWeekPlanSlots(): GameState['plannedWeekSlots'] {
+  return [null, null, null]
+}
+
+function pushWeekResolutionResult(state: GameState, result: WeekResolutionResult) {
+  return {
+    ...state,
+    weekResolutionResults: [...state.weekResolutionResults, result].slice(-8),
+  }
+}
+
 function applyConditionShift(state: GameState, shift: Partial<Pick<GameState, 'stress' | 'health' | 'energy' | 'reputation'>>) {
   return {
     ...state,
@@ -34,6 +46,38 @@ function applyConditionShift(state: GameState, shift: Partial<Pick<GameState, 's
     energy: clamp(state.energy + (shift.energy ?? 0), 0, 100),
     reputation: clamp(state.reputation + (shift.reputation ?? 0), 0, 999),
   }
+}
+
+function applyWeekEventOption(state: GameState, option: WeekEventOption) {
+  let nextState = applyConditionShift(
+    {
+      ...state,
+      cash: state.cash + (option.cash ?? 0),
+      knowledge: clamp(state.knowledge + (option.knowledge ?? 0), 0, 999),
+      bankTrust: clamp(state.bankTrust + (option.bankTrust ?? 0), 0, 100),
+      creditScore: clamp(state.creditScore + (option.creditScore ?? 0), 300, 850),
+    },
+    {
+      stress: option.stress,
+      energy: option.energy,
+      health: option.health,
+      reputation: option.reputation,
+    },
+  )
+
+  if (option.storyFlag) {
+    nextState = addStoryFlag(nextState, option.storyFlag)
+  }
+
+  if (option.contactId) {
+    nextState = adjustContact(nextState, option.contactId, 2)
+  }
+
+  if (option.watchlistSymbol && !nextState.watchlist.includes(option.watchlistSymbol)) {
+    nextState = { ...nextState, watchlist: [...nextState.watchlist, option.watchlistSymbol] }
+  }
+
+  return nextState
 }
 
 function getPersonalActionShift(state: GameState, action: keyof typeof PERSONAL_ACTION_MAP | string) {
@@ -45,7 +89,7 @@ function getPersonalActionShift(state: GameState, action: keyof typeof PERSONAL_
   let health = personalAction.effects.health ?? 0
   const reputation = personalAction.effects.reputation ?? 0
 
-  if (state.wellnessTier === 'stretch' || state.wellnessTier === 'gym') {
+  if (state.wellnessTier === 'stretch' || state.wellnessTier === 'community-gym' || state.wellnessTier === 'gym') {
     energy += 1
     health += 1
   }
@@ -63,6 +107,196 @@ function getPersonalActionShift(state: GameState, action: keyof typeof PERSONAL_
   }
 
   return { stress, energy, health, reputation }
+}
+
+function applyPlannedWeekAction(state: GameState, slotIndex: number) {
+  const plannedAction = state.plannedWeekSlots[slotIndex]
+  if (!plannedAction) {
+    return pushWeekResolutionResult(
+      {
+        ...state,
+        weekResolutionCursor: slotIndex + 1,
+      },
+      {
+        id: `slot-${state.week}-${slotIndex}-empty`,
+        label: `Open day ${slotIndex + 1}`,
+        detail: 'You left this part of the week open and let the time breathe.',
+        deltas: ['No special action'],
+        tone: 'neutral',
+      },
+    )
+  }
+
+  let nextState = state
+  let detail = plannedAction.detail
+  let deltas: string[] = []
+  let tone: Tone = 'neutral'
+
+  if (plannedAction.id === 'focus-shift') {
+    const currentJob = JOB_MAP[state.jobId]
+    const extraCash = Math.max(55, Math.round(toWeeklyAmount(currentJob.salary) * 0.22))
+    nextState = applyConditionShift({ ...state, cash: state.cash + extraCash }, { stress: 4, energy: -5, reputation: 1 })
+    detail = `You pushed harder at ${currentJob.title} for one extra day.`
+    deltas = [`+${money(extraCash)}`, 'Stress +4', 'Energy -5', 'Rep +1']
+    tone = 'good'
+  } else if (plannedAction.id === 'best-gig' && plannedAction.sourceRef) {
+    const gig = GIG_MAP[plannedAction.sourceRef]
+    if (gig) {
+      let payout = gig.payout
+      if (gig.id === 'delivery' && hasUpgrade(state, 'scooter')) payout += 80
+      if (gig.id === 'repair-callout' && hasUpgrade(state, 'toolkit')) payout += 60
+      const shift =
+        gig.id === 'flyers'
+          ? { energy: -4, stress: 2, health: 0, reputation: 1 }
+          : gig.id === 'delivery'
+            ? { energy: -8, stress: 4, health: -1, reputation: 1 }
+            : gig.id === 'freelance'
+              ? { energy: -5, stress: 2, health: 0, reputation: 1 }
+              : { energy: -6, stress: 3, health: 0, reputation: 1 }
+      nextState = applyConditionShift({ ...state, cash: state.cash + payout }, shift)
+      if (gig.id === 'repair-callout') {
+        nextState = adjustContact(nextState, 'contractor', 2)
+      } else if (gig.id === 'freelance') {
+        nextState = adjustContact(nextState, 'recruiter', 2)
+      } else if (gig.id === 'market-stall') {
+        nextState = adjustContact(nextState, 'broker', 2)
+      }
+      detail = `${gig.title} paid out in the middle of the week.`
+      deltas = [`+${money(payout)}`, `Stress +${shift.stress ?? 0}`, `Energy ${shift.energy ?? 0}`.replace('--', '-'), 'Rep +1']
+      tone = 'good'
+    }
+  } else if (plannedAction.id === 'steady-side-work' && plannedAction.sourceRef) {
+    const sideJob = SIDE_JOB_MAP[plannedAction.sourceRef]
+    if (sideJob && !state.sideJobIds.includes(sideJob.id) && canTakeSideJob(state, sideJob)) {
+      nextState = sideJob.contactId
+        ? adjustContact({ ...state, sideJobIds: [...state.sideJobIds, sideJob.id], reputation: clamp(state.reputation + 1, 0, 999) }, sideJob.contactId, 2)
+        : { ...state, sideJobIds: [...state.sideJobIds, sideJob.id], reputation: clamp(state.reputation + 1, 0, 999) }
+      detail = `${sideJob.title} is now part of your weekly routine.`
+      deltas = ['Future pay up', 'Rep +1']
+      tone = 'good'
+    }
+  } else if (PERSONAL_ACTION_MAP[plannedAction.id]) {
+    const personalAction = PERSONAL_ACTION_MAP[plannedAction.id]
+    const shift = getPersonalActionShift(state, personalAction.id)
+    if (shift && state.cash >= personalAction.cashCost && !state.personalActionsUsedThisWeek.includes(personalAction.id)) {
+      nextState = applyConditionShift(
+        {
+          ...state,
+          cash: state.cash - personalAction.cashCost,
+          personalActionsUsedThisWeek: [...state.personalActionsUsedThisWeek, personalAction.id],
+        },
+        shift,
+      )
+      if (personalAction.storyFlag) {
+        nextState = addStoryFlag(nextState, personalAction.storyFlag)
+      }
+      if (personalAction.contactId) {
+        nextState = adjustContact(nextState, personalAction.contactId, 2)
+      }
+      detail = personalAction.description
+      deltas = [
+        personalAction.cashCost > 0 ? `${money(-personalAction.cashCost)}` : 'No cash cost',
+        shift.stress ? `Stress ${shift.stress}` : 'Stress steady',
+        shift.energy ? `Energy ${shift.energy > 0 ? '+' : ''}${shift.energy}` : 'Energy steady',
+      ]
+      tone = 'good'
+    }
+  } else if (plannedAction.id === 'study-block') {
+    nextState = applyConditionShift(
+      {
+        ...state,
+        knowledge: clamp(state.knowledge + 2, 0, 999),
+      },
+      { stress: 2, energy: -3 },
+    )
+    detail = 'You put real time into study instead of only reacting to the week.'
+    deltas = ['Knowledge +2', 'Stress +2', 'Energy -3']
+    tone = 'good'
+  } else if (plannedAction.id === 'network-round') {
+    nextState = adjustContact(
+      applyConditionShift({ ...state }, { stress: 1, reputation: 1 }),
+      state.reputation >= 3 ? 'broker' : 'recruiter',
+      3,
+    )
+    detail = 'You used a day on messages, check-ins, and small asks.'
+    deltas = ['Rep +1', 'Contact +3', 'Stress +1']
+    tone = 'good'
+  } else if (plannedAction.id === 'bank-admin') {
+    if (!state.bankAccount && state.cash >= 25) {
+      nextState = applyConditionShift(
+        {
+          ...state,
+          cash: state.cash - 25,
+          bankAccount: true,
+          creditScore: clamp(state.creditScore + 10, 300, 850),
+          bankTrust: clamp(state.bankTrust + 12, 0, 100),
+        },
+        { stress: -2, reputation: 1 },
+      )
+      detail = 'You used the day to get your banking sorted.'
+      deltas = [money(-25), 'Stress -2', 'Rep +1', 'Bank trust +12']
+      tone = 'good'
+    } else {
+      nextState = applyConditionShift(
+        {
+          ...state,
+          bankTrust: clamp(state.bankTrust + 1, 0, 100),
+        },
+        { stress: -1 },
+      )
+      detail = 'You cleaned up the money side and kept the basics from drifting.'
+      deltas = ['Bank trust +1', 'Stress -1']
+      tone = 'neutral'
+    }
+  } else if (plannedAction.id === 'market-research') {
+    nextState = applyConditionShift(
+      {
+        ...state,
+        knowledge: clamp(state.knowledge + 1, 0, 999),
+        watchlist: state.watchlist.includes('YIELD') ? state.watchlist : [...state.watchlist, 'YIELD'],
+      },
+      { stress: -1 },
+    )
+    detail = 'You spent the day reading the tape instead of forcing a trade.'
+    deltas = ['Knowledge +1', state.watchlist.includes('YIELD') ? 'Watchlist refined' : 'YIELD added', 'Stress -1']
+    tone = 'good'
+  } else if (plannedAction.id === 'property-scout') {
+    nextState = adjustContact(
+      applyConditionShift(addStoryFlag({ ...state }, 'room-lead-open'), { reputation: 1 }),
+      'broker',
+      2,
+    )
+    detail = 'You spent the day talking to brokers and walking smaller listings.'
+    deltas = ['Rep +1', 'Broker +2', 'Lead opened']
+    tone = 'good'
+  } else if (plannedAction.id === 'business-sketch') {
+    nextState = adjustContact(
+      {
+        ...state,
+        knowledge: clamp(state.knowledge + 1, 0, 999),
+      },
+      'contractor',
+      2,
+    )
+    nextState = applyConditionShift(nextState, { stress: 1, reputation: 1 })
+    detail = 'You priced out a tiny operator lane and made a few useful calls.'
+    deltas = ['Knowledge +1', 'Rep +1', 'Contractor +2']
+    tone = 'good'
+  }
+
+  return pushWeekResolutionResult(
+    {
+      ...nextState,
+      weekResolutionCursor: slotIndex + 1,
+    },
+    {
+      id: `slot-${state.week}-${slotIndex}-${plannedAction.id}`,
+      label: plannedAction.label,
+      detail,
+      deltas,
+      tone,
+    },
+  )
 }
 
 function canBuyCourse(state: GameState, course: Course) {
@@ -270,18 +504,17 @@ function generateOpportunities(state: GameState) {
     .slice()
     .sort((a, b) => b.rivalry - a.rivalry)[0]
 
-  if (broker >= 28 && state.propertyListings.length > 0 && state.housingDemand >= -4) {
-    const hottestDistrict = state.districtStates.slice().sort((a, b) => b.momentum - a.momentum)[0]
-    const listing = state.propertyListings.find((item) => item.districtId === hottestDistrict.districtId) ?? state.propertyListings[0]
+  if (broker >= 16 && state.propertyListings.length > 0 && state.housingDemand >= -6) {
+    const listing = state.propertyListings.slice().sort((left, right) => left.askingPrice - right.askingPrice)[0]
     opportunities.push({
       id: `opp-property-${state.month}`,
       type: 'offmarket-property',
-      title: 'Off-market property whisper',
-      detail: `Your broker found a quieter property route in ${DISTRICT_MAP[listing.districtId].name} at a discount.`,
+      title: 'Small property lead',
+      detail: `Your broker found a quieter deal in ${DISTRICT_MAP[listing.districtId].name}. It is not flashy, but it could be a real first asset.`,
       contactId: 'broker',
       districtId: listing.districtId,
       listingId: listing.id,
-      value: Math.round(listing.askingPrice * 0.1),
+      value: Math.round(listing.askingPrice * 0.12),
     })
   }
 
@@ -392,14 +625,17 @@ function generateOpportunities(state: GameState) {
     })
   }
 
-  if (!state.storyFlags.includes('operator-takeover') && state.cash >= 6000 && (state.reputation >= 8 || (topBusinessRival?.rivalry ?? 0) >= 18)) {
+  if (!state.storyFlags.includes('operator-takeover') && state.cash >= 1800 && (state.reputation >= 4 || (topBusinessRival?.rivalry ?? 0) >= 18)) {
     const districtId = topBusinessRival?.focusDistrictId ?? state.districtStates.slice().sort((a, b) => b.momentum - a.momentum)[0].districtId
-    const business = Object.values(BUSINESS_MAP).find((item) => item.reputationRequired <= Math.max(8, state.reputation + 2)) ?? Object.values(BUSINESS_MAP)[0]
+    const business =
+      Object.values(BUSINESS_MAP)
+        .filter((item) => item.cost <= Math.max(4200, state.cash * 1.35))
+        .find((item) => item.reputationRequired <= Math.max(4, state.reputation + 1)) ?? Object.values(BUSINESS_MAP)[0]
     opportunities.push({
       id: `opp-takeover-${state.month}`,
       type: 'distressed-business',
-      title: 'Operator exit',
-      detail: `A tired owner is willing to sell a ${business.title} in ${DISTRICT_MAP[districtId].name} before the wider market notices.`,
+      title: 'Small business handoff',
+      detail: `A tired owner is willing to hand off a ${business.title} in ${DISTRICT_MAP[districtId].name} before the wider market notices.`,
       contactId: 'recruiter',
       districtId,
       businessTemplateId: business.id,
@@ -499,7 +735,7 @@ function assignTenantProfile(property: Pick<GameState['properties'][number], 'te
 
 export function createInitialState(): GameState {
   const districtStates = createDistrictStates()
-  return {
+  const baseState: GameState = {
     week: 1,
     weekOfMonth: 1,
     month: 1,
@@ -529,6 +765,12 @@ export function createInitialState(): GameState {
     foodTier: 'skip-meals',
     wellnessTier: 'none',
     personalActionsUsedThisWeek: [],
+    plannedWeekSlots: emptyWeekPlanSlots(),
+    weekPlanCommitted: false,
+    weekResolutionPhase: 'idle',
+    weekResolutionCursor: 0,
+    weekResolutionResults: [],
+    activeWeekEventCards: [],
     jobId: 'night-cleaning',
     sideJobIds: [],
     certifications: [],
@@ -574,6 +816,10 @@ export function createInitialState(): GameState {
       },
     ],
   }
+  return {
+    ...baseState,
+    activeWeekEventCards: getWeekEventCards(baseState),
+  }
 }
 
 export function loadState() {
@@ -582,6 +828,109 @@ export function loadState() {
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   if (action.type === 'RESET') return createInitialState()
+
+  if (action.type === 'SET_WEEK_SLOT') {
+    if (state.weekPlanCommitted) return state
+    if (action.slotIndex < 0 || action.slotIndex >= state.plannedWeekSlots.length) return state
+    if (
+      action.plannedAction.oncePerWeek &&
+      state.plannedWeekSlots.some((slot, index) => index !== action.slotIndex && slot?.id === action.plannedAction.id)
+    ) {
+      return state
+    }
+    const nextSlots = state.plannedWeekSlots.map((slot, index) => (index === action.slotIndex ? action.plannedAction : slot))
+    return {
+      ...state,
+      plannedWeekSlots: nextSlots,
+      weekResolutionPhase: 'idle',
+      weekResolutionCursor: 0,
+      weekResolutionResults: [],
+    }
+  }
+
+  if (action.type === 'CLEAR_WEEK_SLOT') {
+    if (state.weekPlanCommitted) return state
+    if (action.slotIndex < 0 || action.slotIndex >= state.plannedWeekSlots.length) return state
+    return {
+      ...state,
+      plannedWeekSlots: state.plannedWeekSlots.map((slot, index) => (index === action.slotIndex ? null : slot)),
+      weekResolutionPhase: 'idle',
+      weekResolutionCursor: 0,
+      weekResolutionResults: [],
+    }
+  }
+
+  if (action.type === 'COMMIT_WEEK_PLAN') {
+    if (state.weekPlanCommitted) return state
+    if (!state.plannedWeekSlots.some(Boolean)) return state
+    return {
+      ...state,
+      weekPlanCommitted: true,
+      weekResolutionPhase: 'resolving',
+      weekResolutionCursor: 0,
+      weekResolutionResults: [],
+    }
+  }
+
+  if (action.type === 'CANCEL_WEEK_PLAN') {
+    if (state.weekResolutionPhase === 'resolving') return state
+    return {
+      ...state,
+      weekPlanCommitted: false,
+      plannedWeekSlots: emptyWeekPlanSlots(),
+      weekResolutionPhase: 'idle',
+      weekResolutionCursor: 0,
+      weekResolutionResults: [],
+    }
+  }
+
+  if (action.type === 'CHOOSE_WEEK_EVENT_OPTION') {
+    if (state.weekPlanCommitted && state.weekResolutionPhase === 'resolving') return state
+    const eventCard = state.activeWeekEventCards.find((card) => card.id === action.eventId)
+    const option = eventCard?.options.find((item) => item.id === action.optionId)
+    if (!eventCard || !option) return state
+
+    const nextState = applyWeekEventOption(state, option)
+    return pushLog(
+      {
+        ...nextState,
+        activeWeekEventCards: nextState.activeWeekEventCards.filter((card) => card.id !== action.eventId),
+      },
+      eventCard.title,
+      option.detail,
+      eventCard.tone,
+    )
+  }
+
+  if (action.type === 'RESOLVE_NEXT_WEEK_SLOT') {
+    if (!state.weekPlanCommitted || state.weekResolutionPhase !== 'resolving') return state
+    const cursor = Math.min(state.weekResolutionCursor, state.plannedWeekSlots.length)
+    if (cursor >= state.plannedWeekSlots.length) {
+      return gameReducer(
+        {
+          ...state,
+          weekPlanCommitted: true,
+          weekResolutionPhase: 'resolving',
+        },
+        { type: 'END_WEEK' },
+      )
+    }
+
+    const resolvedState = applyPlannedWeekAction(state, cursor)
+    const isFinalSlot = cursor >= state.plannedWeekSlots.length - 1
+    if (isFinalSlot) {
+      return gameReducer(
+        {
+          ...resolvedState,
+          weekPlanCommitted: true,
+          weekResolutionPhase: 'resolving',
+        },
+        { type: 'END_WEEK' },
+      )
+    }
+
+    return resolvedState
+  }
 
   if (action.type === 'TAKE_JOB') {
     const job = JOB_MAP[action.jobId]
@@ -1563,12 +1912,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   }
 
   if (action.type === 'END_WEEK' || action.type === 'END_MONTH') {
+    const hadCommittedPlan = state.weekPlanCommitted
     const isMonthEnd = action.type === 'END_MONTH' || state.weekOfMonth === WEEKS_PER_MONTH
     const event = isMonthEnd
       ? randomItem(MONTHLY_EVENTS)
       : {
           title: 'Weekly reset',
-          detail: 'A regular week closed without a major macro shock, but the grind still moved your run forward.',
+          detail: 'A regular week closed without a major macro shock, but you still moved your position forward.',
           marketBoost: 0,
           propertyRentBoost: 0,
           sectorBoosts: {},
@@ -2208,6 +2558,32 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       }
       stateAfterLife.history = [...stateAfterLife.history, snapshot].slice(-24)
     }
+
+    if (hadCommittedPlan) {
+      stateAfterLife.weekResolutionResults = [
+        ...state.weekResolutionResults,
+        {
+          id: `settlement-${state.week}`,
+          label: 'Week settles',
+          detail: `The week closes and the regular cashflow lands around ${money(salary + sideJobIncome + rentalIncome + businessIncome - maintenance - livingCost - debtService)} after weekly costs.`,
+          deltas: [
+            `Wages ${money(salary)}`,
+            sideJobIncome > 0 ? `Side work ${money(sideJobIncome)}` : 'No side-work change',
+            rentalIncome > 0 || businessIncome > 0 ? `Assets ${money(rentalIncome + businessIncome)}` : 'No asset income',
+            `Living ${money(-livingCost)}`,
+          ],
+          tone: (salary + rentalIncome + businessIncome + dividends + bondIncome + savingsInterest - maintenance - livingCost - debtService >= 0 ? 'good' : 'bad') as Tone,
+        },
+      ].slice(-8)
+    } else {
+      stateAfterLife.weekResolutionResults = []
+    }
+
+    stateAfterLife.plannedWeekSlots = emptyWeekPlanSlots()
+    stateAfterLife.weekPlanCommitted = false
+    stateAfterLife.weekResolutionCursor = 0
+    stateAfterLife.weekResolutionPhase = hadCommittedPlan ? 'settled' : 'idle'
+    stateAfterLife.activeWeekEventCards = getWeekEventCards(stateAfterLife)
 
     return pushLog(stateAfterLife, isMonthEnd ? event.title : `Week ${state.week} closed`, notes.join(' '), salary + rentalIncome + businessIncome + dividends + bondIncome + savingsInterest - maintenance - livingCost - debtService >= 0 ? 'good' : 'bad')
   }

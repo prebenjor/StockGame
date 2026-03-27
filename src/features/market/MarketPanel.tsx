@@ -346,8 +346,8 @@ export function MarketPanel({ state, dispatch }: Props) {
         </div>
         <p>
           {state.bankAccount && hasStableHousing(state)
-            ? 'This side should read like a real desk now: pick a time window, screen the board, then move into watchlist, news, or exchange for the actual trade decisions.'
-            : 'The market still leaks edge when your real life is messy, but the desk is cleaner now. Screen the board, set the chart range you trust, and only then decide whether to watch, buy, or wait.'}
+            ? 'Read the board first, then decide whether you actually want to buy, watch, or wait.'
+            : 'The market gets easier once life is steadier, but you can still start small. Read the board, pick a time window, and avoid forcing trades.'}
         </p>
       </div>
 
@@ -374,7 +374,7 @@ export function MarketPanel({ state, dispatch }: Props) {
             </button>
           ))}
         </div>
-        <p className="market-range-summary">All visible charts are locked to the {rangeLabel} window.</p>
+        <p className="market-range-summary">All visible charts are showing the same {rangeLabel} window.</p>
       </div>
 
       <SectionToolbar
@@ -448,7 +448,7 @@ export function MarketPanel({ state, dispatch }: Props) {
                 <div><span>Watchlist</span><strong>{state.watchlist.length}</strong></div>
                 <div><span>Monthly dividend run rate</span><strong>{money(monthlyDividendRunRate)}</strong></div>
               </div>
-              <p>Use this as the read layer: search the board, lock the chart window, compare symbols on equal-size cards, then move into Watchlist, News, or Exchange for the actual decision.</p>
+              <p>Use this as the reading layer: search the board, lock the time window, compare names on equal-size cards, then move into Watchlist, News, or Exchange when you want to act.</p>
               {topMover ? (
                 <div className="market-summary-note">
                   <strong>Top weekly mover</strong>
@@ -502,7 +502,7 @@ export function MarketPanel({ state, dispatch }: Props) {
           {watchlistRows.length === 0 ? (
             <article className="card empty-state">
               <h3>No watchlist names match</h3>
-              <p>Broaden the search or loosen the held/type filters. The watchlist is supposed to be your clean reading layer, not another full-market dump.</p>
+              <p>Broaden the search or loosen the held/type filters. The watchlist should narrow your attention, not disappear entirely.</p>
             </article>
           ) : (
             watchlistRows.map((stock) => {
@@ -551,7 +551,7 @@ export function MarketPanel({ state, dispatch }: Props) {
           {newsRows.length === 0 ? (
             <article className="card empty-state">
               <h3>No tape items match</h3>
-              <p>Tight filters can blank the feed. Loosen them or advance more weeks to get a broader mix of earnings and alert traffic.</p>
+              <p>Tight filters can blank the feed. Loosen them or advance a few more weeks to let the tape build up.</p>
             </article>
           ) : (
             newsRows.map((item) => (
@@ -578,7 +578,7 @@ export function MarketPanel({ state, dispatch }: Props) {
           {exchangeRows.length === 0 ? (
             <article className="card empty-state">
               <h3>No names match</h3>
-              <p>That filter stack is too tight for the current tape. Relax it or wait until your cash, watchlist, or holdings profile changes.</p>
+              <p>That filter stack is too tight for the current board. Relax it or come back when your cash, watchlist, or holdings change.</p>
             </article>
           ) : (
             exchangeRows.map((stock) => {
@@ -648,7 +648,7 @@ export function MarketPanel({ state, dispatch }: Props) {
                         </button>
                       </div>
                       <p className="action-hint">
-                        {buyOneReason ? `Blocked: ${buyOneReason}.` : 'Primary move: size small first unless the name is already on your board and the range view still supports the setup.'}
+                        {buyOneReason ? `Blocked: ${buyOneReason}.` : 'If you want in, start small unless you already know why this name belongs in your week.'}
                       </p>
                     </div>
                     <div className="action-section">
@@ -677,7 +677,7 @@ export function MarketPanel({ state, dispatch }: Props) {
                         </button>
                       </div>
                       <p className="action-hint">
-                        {sellReason ? `Sell blocked: ${sellReason}.` : 'Secondary move: trim when conviction breaks, liquidity matters more, or the tape is getting ahead of your process.'}
+                        {sellReason ? `Sell blocked: ${sellReason}.` : 'Trim when the reason for holding weakens, or when you need the cash more than the position.'}
                       </p>
                     </div>
                   </div>

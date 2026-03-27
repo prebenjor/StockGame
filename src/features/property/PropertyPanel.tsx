@@ -120,7 +120,7 @@ export function PropertyPanel({ state, dispatch }: Props) {
           <span className="panel-kicker">Real Estate</span>
           <h2>District map and asset book</h2>
         </div>
-        <p>This should feel like a property dossier: local momentum first, then active listings, then the assets you already own and manage.</p>
+        <p>Start with the neighborhoods, then the listings, then the places you already own. You do not need a big building to start here anymore.</p>
       </div>
 
       <SectionTabs
@@ -175,7 +175,7 @@ export function PropertyPanel({ state, dispatch }: Props) {
             const district = DISTRICT_MAP[listing.districtId]
             const hardMoneyLoan = !state.bankAccount
             const mortgageCashNeed = Math.round(listing.askingPrice * (hardMoneyLoan ? 0.35 : 0.28)) + (hardMoneyLoan ? 380 : 120)
-            const accessReason = !canBuyProperty(state, property) ? 'Property access unavailable' : undefined
+            const accessReason = !canBuyProperty(state, property) ? `Reach reputation ${property.reputationRequired}` : undefined
             const cashBuyReason = accessReason ?? (state.cash < listing.askingPrice ? `Need ${money(listing.askingPrice)} cash` : undefined)
             const mortgageReason =
               accessReason ??
@@ -199,6 +199,7 @@ export function PropertyPanel({ state, dispatch }: Props) {
                   <span className="tag">Rent {money(property.baseRent)}/mo</span>
                   <span className="tag">Upkeep {money(property.upkeep)}</span>
                   <span className="tag">Rep {property.reputationRequired}+</span>
+                  {property.cost <= 2500 ? <span className="tag accent">Starter step</span> : null}
                 </div>
                 <div className="action-row">
                   <button className="mini-button" disabled={!!cashBuyReason} onClick={() => dispatch({ type: 'BUY_PROPERTY', listingId: listing.id, financing: 'cash' })} title={cashBuyReason}>
@@ -219,7 +220,7 @@ export function PropertyPanel({ state, dispatch }: Props) {
           {owned.length === 0 ? (
             <article className="card empty-state">
               <h3>No property yet</h3>
-              <p>Keep stacking cash. The first rental changes the whole pacing of the run.</p>
+              <p>You do not need to jump straight to a full apartment rental. Smaller assets can still get you into the property game.</p>
             </article>
           ) : (
             owned.map((property) => {

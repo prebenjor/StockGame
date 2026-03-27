@@ -38,7 +38,7 @@ export function getMilestones(state: GameState) {
   return [
     { label: 'Secure stable housing', complete: hasStableHousing(state) },
     { label: 'Open a bank account', complete: state.bankAccount },
-    { label: 'Reach positive weekly runway', complete: getWeeklyRunway(state) >= 0 },
+    { label: 'Get the week paying for itself', complete: getWeeklyRunway(state) >= 0 },
     { label: 'Own something that pays you back', complete: state.properties.some((property) => property.rented) || state.businesses.length > 0 || passiveIncome > 0 },
     { label: 'Build a $500 emergency buffer', complete: state.cash + state.savingsBalance >= 500 },
     { label: 'Reach $50k net worth', complete: getNetWorth(state) >= 50000 },
@@ -47,31 +47,34 @@ export function getMilestones(state: GameState) {
 
 export function getTips(state: GameState) {
   const tips: string[] = []
-  if (!state.bankAccount && state.cash < 25) tips.push('You are still operating in cash. Getting banked will open up easier saving and borrowing later.')
-  if (!state.bankAccount && state.cash >= 25) tips.push('You can open an account now if you want a steadier base for the next stretch.')
-  if (state.actionPoints > 0 && state.stress >= 62 && state.personalActionsUsedThisWeek.length === 0) tips.push('Stress is climbing. A quiet day would probably help more than forcing one more push.')
-  if (state.actionPoints > 0 && state.health < 45 && state.cash <= 20) tips.push('A cheap recovery week is still a valid choice when money is tight and your body is lagging.')
-  if (!state.educationEnrollment && state.bankAccount && state.reputation >= 1 && state.knowledge < 4) tips.push('Study is a real option now. It is slower, but it can open better work instead of only chasing short cash.')
-  if (state.educationEnrollment) tips.push('Your current program is a slow build. It costs runway now and pays back later.')
-  if (state.sideJobIds.length === 0 && state.week <= 8) tips.push('If you want steadier income, side work is the easiest way to make the week feel less fragile.')
-  if (state.sideJobIds.length > 0 && state.energy < 35) tips.push('Your current side-work load may be a little too heavy for where your energy is.')
-  if (canOpenCreditCard(state)) tips.push('The bank would approve you for a starter card now. It helps most when you treat it like a buffer, not income.')
-  if (getCreditUtilization(state) >= 0.6) tips.push('Your card balance is starting to crowd your credit score.')
-  if (!hasStableHousing(state)) tips.push('Your living setup is still doing damage every week.')
-  if (state.transportTier === 'foot') tips.push('A better way to get around would make work and recovery easier.')
-  if (state.storyFlags.includes('room-lead-open') || state.storyFlags.includes('transport-deal-open') || state.storyFlags.includes('neighbor-network-open')) tips.push('A local lead is still open if you want to act on it.')
-  if (state.watchlist.length === 0) tips.push('The market is easier to follow once you narrow it down to a few names.')
-  if (!state.market.some((stock) => stock.assetType === 'etf' && state.holdings[stock.symbol])) tips.push('Safer market exposure is available now through ETFs if you want to start small.')
-  if (state.debt <= 0 && state.cash + state.savingsBalance < 500) tips.push('You are starting clean, but you are not comfortable yet. The first real cushion still matters.')
+  const buffer = state.cash + state.savingsBalance
+  if (!state.bankAccount && state.cash < 25) tips.push('You are still handling life in cash. Getting banked would make saving and borrowing a lot less awkward.')
+  if (!state.bankAccount && state.cash >= 25) tips.push('You can open an account now if you want the next few weeks to feel steadier.')
+  if (state.actionPoints > 0 && state.stress >= 62 && state.personalActionsUsedThisWeek.length === 0) tips.push('Stress is climbing. One quiet day would probably do more good than another forced push.')
+  if (state.actionPoints > 0 && state.health < 45 && state.cash <= 20) tips.push('A cheap recovery week is still a solid choice when cash is tight and your body is lagging.')
+  if (!state.educationEnrollment && state.bankAccount && state.reputation >= 1 && state.knowledge < 4) tips.push('Study is a real option now. It is slower than hustle, but it opens cleaner work.')
+  if (state.educationEnrollment) tips.push('Your program is doing its job slowly. The cost lands now, the payoff lands later.')
+  if (state.sideJobIds.length === 0 && state.week <= 8) tips.push('If you want the week to feel less fragile, steady side work is still the easiest first move.')
+  if (state.sideJobIds.length > 0 && state.energy < 35) tips.push('Your current side-work load may be a bit heavier than your energy can really support.')
+  if (canOpenCreditCard(state)) tips.push('The bank would approve you for a starter card now. It works best as breathing room, not income.')
+  if (getCreditUtilization(state) >= 0.6) tips.push('Your card balance is getting high enough to lean on your credit score.')
+  if (!hasStableHousing(state)) tips.push('Where you live is still making the rest of the week harder than it needs to be.')
+  if (state.transportTier === 'foot') tips.push('Even a small transport upgrade would make work and recovery easier.')
+  if (state.storyFlags.includes('room-lead-open') || state.storyFlags.includes('transport-deal-open') || state.storyFlags.includes('neighbor-network-open')) tips.push('A local lead is still sitting there if you want to use it.')
+  if (state.watchlist.length === 0) tips.push('The market gets easier to read once you narrow it down to a few names.')
+  if (state.bankAccount && buffer >= 150 && !state.market.some((stock) => stock.assetType === 'etf' && state.holdings[stock.symbol])) tips.push('If you want to start investing, the ETFs are the calmer first step.')
+  if (buffer >= 600 && state.reputation >= 1 && state.properties.length === 0) tips.push('The smaller property listings are starting to make sense if you want an asset path.')
+  if (buffer >= 1500 && state.reputation >= 1 && state.businesses.length === 0) tips.push('A tiny owner-run business is starting to come into range if that path interests you.')
+  if (state.debt <= 0 && buffer < 500) tips.push('You started clean, but not comfortable. The first real cushion still matters.')
   if (state.debt > 3000) tips.push('Debt is getting heavy enough to shape the month by itself.')
-  if (state.taxDue > 1500) tips.push('Your tax bill is getting large enough to matter.')
-  if (getComplianceRisk(state) >= 55) tips.push('Your paperwork risk is high enough that it could turn expensive.')
-  if (state.economyPhase === 'recession') tips.push('The wider economy is getting tighter, so cash buffers matter more right now.')
+  if (state.taxDue > 1500) tips.push('Your tax bill is large enough that it cannot stay in the background anymore.')
+  if (getComplianceRisk(state) >= 55) tips.push('Paperwork risk is getting high enough to turn expensive.')
+  if (state.economyPhase === 'recession') tips.push('The wider economy is tightening up, so buffers matter more than usual.')
   if (state.businesses.length > 0 && state.businesses.some((business) => business.active && business.condition < 45)) tips.push('One of your businesses is slipping and will need attention soon.')
   if (state.properties.some((property) => property.rented && property.missedPayments > 0)) tips.push('One of your rentals is wobbling and could turn into a vacancy problem.')
-  if (state.stress > 65) tips.push('Your week will probably go better if you make room to come down a little.')
+  if (state.stress > 65) tips.push('This week will probably go better if you make room to calm down a little.')
   if (state.health < 40) tips.push('Low health is starting to drag on everything else.')
-  if (tips.length < 3) tips.push('You do not need one perfect plan. A small step that makes next week easier is still progress.')
+  if (tips.length < 3) tips.push('You do not need one perfect plan. A small step that makes next week easier still counts.')
   return tips.slice(0, 4)
 }
 
@@ -136,11 +139,11 @@ export function getRouteOptions(state: GameState): RouteOption[] {
     title: 'Start investing',
     reason:
       buffer >= 200
-        ? 'You finally have enough room to start building a position instead of only surviving.'
-        : 'The market is open to you, but it makes more sense once you have a little breathing room.',
+        ? 'You finally have enough room to start building a position instead of only just getting through the week.'
+        : 'The market is there if you want it, but it gets easier once you have a little breathing room.',
     firstMove:
       state.watchlist.length === 0
-        ? 'Build a watchlist and start with the safer names.'
+        ? 'Build a watchlist and start with the calmer ETF names.'
         : 'Use the watchlist and start small if you want market exposure.',
     view: 'market',
     score: (state.bankAccount ? 2 : 0) + (buffer >= 150 ? 4 : 0) + (state.watchlist.length > 0 ? 2 : 0) + (weeklyRunway >= 0 ? 1 : 0),
@@ -148,7 +151,7 @@ export function getRouteOptions(state: GameState): RouteOption[] {
 
   routes.push({
     id: 'property',
-    title: 'Move toward property',
+    title: 'Try a first property',
     reason:
       state.properties.length > 0
         ? 'You already have one foot in property, so the next step may be improving what you own.'
@@ -156,9 +159,9 @@ export function getRouteOptions(state: GameState): RouteOption[] {
     firstMove:
       state.properties.length > 0
         ? 'Check listings, repairs, or financing while your base is steady.'
-        : 'Start watching districts and work toward the cash and trust to enter cleanly.',
+        : 'Watch the smaller listings first. A parking space or storage unit is enough to get started.',
     view: 'property',
-    score: (hasStableHousing(state) ? 2 : 0) + (state.bankAccount ? 2 : 0) + (buffer >= 800 ? 3 : 0) + (state.reputation >= 3 ? 2 : 0) + (weeklyRunway >= 0 ? 1 : 0),
+    score: (hasStableHousing(state) ? 2 : 0) + (state.bankAccount ? 2 : 0) + (buffer >= 500 ? 3 : 0) + (state.reputation >= 1 ? 2 : 0) + (weeklyRunway >= 0 ? 1 : 0),
   })
 
   routes.push({
@@ -171,9 +174,9 @@ export function getRouteOptions(state: GameState): RouteOption[] {
     firstMove:
       state.businesses.length > 0
         ? 'Check financing, condition, and whether the business is actually helping your month.'
-        : 'Keep building cash, trust, and reputation until a starter business is realistic.',
+        : 'Look at the solo operator options first. The smallest business is still real progress.',
     view: 'business',
-    score: (state.reputation >= 5 ? 3 : 0) + (buffer >= 2500 ? 4 : 0) + (state.bankAccount ? 1 : 0) + (weeklyRunway >= 0 ? 1 : 0),
+    score: (state.reputation >= 1 ? 3 : 0) + (buffer >= 1400 ? 4 : 0) + (state.bankAccount ? 1 : 0) + (weeklyRunway >= 0 ? 1 : 0),
   })
 
   return routes

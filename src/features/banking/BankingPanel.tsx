@@ -123,7 +123,7 @@ export function BankingPanel({ state, dispatch }: Props) {
           <span className="panel-kicker">Banking</span>
           <h2>Institution stack</h2>
         </div>
-        <p>This area should feel crisp and transactional: accounts, debt, credit, and fixed income separated into modes instead of one long financial dump.</p>
+        <p>This is the money plumbing: cash, debt, credit, and safer savings tools. It is not glamorous, but it changes how fragile the rest of the game feels.</p>
       </div>
 
       <SectionTabs
@@ -171,7 +171,7 @@ export function BankingPanel({ state, dispatch }: Props) {
               <h3>Account posture</h3>
               <span>Trust {state.bankTrust}</span>
             </div>
-            <p>Use this tab for cash management first. The rest of the financing layer gets cleaner once you stop treating checking like a permanent zero-balance relay point.</p>
+            <p>Use this tab to get your cash under control first. Everything else in banking feels easier once checking stops sitting near zero all the time.</p>
             <div className="tag-row">
               <span className="tag">Credit score {state.creditScore}</span>
               <span className="tag">Debt {money(state.debt)}</span>
@@ -239,7 +239,7 @@ export function BankingPanel({ state, dispatch }: Props) {
               <h3>Use pattern</h3>
               <span>{creditCard ? 'Live line' : 'Pre-approval'}</span>
             </div>
-            <p>Keep this area narrow on purpose. The card is a bridge and stress valve, not a replacement for stable cashflow. The key feedback loop is approval, utilization, repayment, then score recovery.</p>
+            <p>The starter card is a small bridge, not a lifestyle. Use it lightly, pay it back, and let the score recover instead of leaning on it every week.</p>
             <div className="tag-row">
               <span className="tag">Credit score {state.creditScore}</span>
               <span className="tag">Bank trust {state.bankTrust}</span>
@@ -282,7 +282,7 @@ export function BankingPanel({ state, dispatch }: Props) {
           {state.bondHoldings.length === 0 ? (
             <article className="card empty-state">
               <h3>No bonds yet</h3>
-              <p>Once cash flow stabilizes, bonds and savings can smooth the run between hustle mode and full risk-taking.</p>
+              <p>Once your cashflow is steadier, bonds can give you a quieter place to park money than stocks or expansion plays.</p>
             </article>
           ) : (
             state.bondHoldings.map((holding) => (

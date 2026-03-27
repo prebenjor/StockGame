@@ -115,7 +115,7 @@ export function EducationPanel({ state, dispatch }: Props) {
           <span className="panel-kicker">Education</span>
           <h2>Programs and credentials</h2>
         </div>
-        <p>This section should read like an academic planner: current study state on one side, the investable program catalog on the other.</p>
+        <p>Study is the slower path, but it is a real one. Use this area to see what you are already learning and what credentials are within reach next.</p>
       </div>
 
       <SectionTabs
@@ -147,7 +147,7 @@ export function EducationPanel({ state, dispatch }: Props) {
               <div><span>Months remaining</span><strong>{state.educationEnrollment?.monthsRemaining ?? 0}</strong></div>
               <div><span>Certifications</span><strong>{state.certifications.length}</strong></div>
             </div>
-            <p>{activeProgram ? activeProgram.description : 'Education is a slower compounding system. It hurts short-run runway but improves jobs, credentials, and long-run output.'}</p>
+            <p>{activeProgram ? activeProgram.description : 'Education costs time and money up front, but it can open cleaner work and better long-term pay.'}</p>
           </article>
 
           <article className="card">

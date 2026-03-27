@@ -53,7 +53,7 @@ export const PERSONAL_ACTIONS: PersonalAction[] = [
     category: 'leisure',
     cashCost: 12,
     actionCost: 1,
-    description: 'A small indulgence. Not a life fix, just a way to stop the run from feeling purely mechanical.',
+    description: 'A small indulgence. Not a life fix, just a way to make the week feel a little more human.',
     oncePerWeek: true,
     effects: { stress: -6, health: 1 },
     ...image('https://images.unsplash.com/photo-1519864600265-abb23847ef2c?auto=format&fit=crop&w=1200&q=80', 'Pastry and coffee on a cafe table'),
