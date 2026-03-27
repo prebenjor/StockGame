@@ -2,7 +2,7 @@ import { SectionTabs } from '../../components/SectionTabs'
 import { SectionToolbar, type ToolbarFilter } from '../../components/SectionToolbar'
 import { useStoredUiState } from '../../components/useStoredUiState'
 import { money } from '../../game/core/format'
-import { getLatestSnapshot, getRecentHistory } from '../../game/core/selectors'
+import { getLatestSnapshot, getMilestones, getRecentHistory } from '../../game/core/selectors'
 import type { GameState } from '../../game/core/types'
 import { SECTION_THEMES } from '../../ui/sectionThemes'
 
@@ -10,7 +10,7 @@ type Props = {
   state: GameState
 }
 
-type LedgerTab = 'latest' | 'history'
+type LedgerTab = 'latest' | 'history' | 'progress'
 
 type LedgerUiState = {
   tab: LedgerTab
@@ -25,6 +25,7 @@ const LEDGER_DEFAULT: LedgerUiState = {
 const LEDGER_TABS = [
   { id: 'latest', label: 'Latest', kicker: 'Current report' },
   { id: 'history', label: 'History', kicker: 'Archive' },
+  { id: 'progress', label: 'Progress', kicker: 'Journal' },
 ] as const
 
 export function LedgerPanel({ state }: Props) {
@@ -32,6 +33,7 @@ export function LedgerPanel({ state }: Props) {
   const [ui, setUi] = useStoredUiState<LedgerUiState>('street-to-stock-ledger-ui-v1', LEDGER_DEFAULT)
   const latest = getLatestSnapshot(state)
   const history = getRecentHistory(state).slice(0, Number(ui.historyWindow))
+  const milestones = getMilestones(state)
   const maxNetWorth = Math.max(...history.map((item) => item.netWorth), 1)
 
   const filters: ToolbarFilter[] =
@@ -52,7 +54,12 @@ export function LedgerPanel({ state }: Props) {
         ]
       : []
 
-  const summary = ui.tab === 'latest' ? `${latest ? `month ${latest.month}` : 'no reports yet'}` : `${history.length} archived snapshots`
+  const summary =
+    ui.tab === 'latest'
+      ? `${latest ? `month ${latest.month}` : 'no reports yet'}`
+      : ui.tab === 'history'
+        ? `${history.length} archived snapshots`
+        : `${milestones.filter((milestone) => milestone.complete).length} reached`
 
   return (
     <section
@@ -143,6 +150,26 @@ export function LedgerPanel({ state }: Props) {
               </div>
             </article>
           ))}
+        </div>
+      ) : null}
+
+      {ui.tab === 'progress' ? (
+        <div className="card-grid compact">
+          <article className="card">
+            <div className="card-topline">
+              <h3>Progress journal</h3>
+              <span>{milestones.filter((milestone) => milestone.complete).length} reached</span>
+            </div>
+            <p>These are markers of how your life is opening up, not instructions for what you have to do next.</p>
+            <div className="milestone-list">
+              {milestones.map((milestone) => (
+                <article className={`milestone ${milestone.complete ? 'complete' : ''}`} key={milestone.label}>
+                  <strong>{milestone.label}</strong>
+                  <span>{milestone.complete ? 'Reached' : 'In progress'}</span>
+                </article>
+              ))}
+            </div>
+          </article>
         </div>
       ) : null}
     </section>

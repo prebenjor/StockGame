@@ -627,6 +627,8 @@ button:focus-visible,
 .condition-strip,
 .suggested-action-grid,
 .opportunity-preview-grid,
+.player-stat-grid,
+.route-grid,
 .hub-event-list {
   display: grid;
   gap: 12px;
@@ -634,6 +636,11 @@ button:focus-visible,
 
 .condition-strip {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.player-stat-grid,
+.route-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .condition-meter {
@@ -655,6 +662,43 @@ button:focus-visible,
 .condition-meter strong {
   font-size: clamp(1.65rem, 1.2rem + 0.8vw, 2.3rem);
   line-height: 1;
+}
+
+.player-stat,
+.route-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(120, 79, 41, 0.1);
+  background: rgba(255, 252, 247, 0.78);
+}
+
+.player-stat span,
+.route-card span,
+.compact-note {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6a4a2f;
+}
+
+.player-stat strong {
+  font-size: clamp(1.35rem, 1rem + 0.55vw, 1.85rem);
+  line-height: 1;
+  color: #24150c;
+}
+
+.route-card strong {
+  color: #24150c;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.route-card p {
+  margin: 0;
+  color: #513d2f;
+  line-height: 1.45;
 }
 
 .open-day-track {
@@ -748,6 +792,17 @@ button:focus-visible,
 
 .tip-list.compact .tip-card {
   padding: 14px 16px;
+}
+
+.compact-note {
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(120, 79, 41, 0.1);
+  background: rgba(255, 252, 247, 0.78);
+  line-height: 1.5;
+  text-transform: none;
+  letter-spacing: normal;
+  color: #4d392b;
 }
 
 .hub-event-list .log-entry {
@@ -1621,7 +1676,9 @@ button:focus-visible,
   }
 
   .condition-strip,
-  .suggested-action-grid {
+  .suggested-action-grid,
+  .player-stat-grid,
+  .route-grid {
     grid-template-columns: 1fr;
   }
 

@@ -171,6 +171,24 @@ Original prompt: Build a fun comprehensive browser stock/wealth game where the p
   - `output/web-game-header-shell-v2/desktop-scrolled.png` plus `desktop-scrolled-state.json` confirm the compact sticky state with `ui.headerCompact: true`
   - `output/web-game-header-shell-v2/mobile-scrolled.png` confirms the tighter mobile sticky shell with horizontally scrollable top-level tabs
 - No `errors-*.json` files were generated during the sticky-header validation runs.
+- Reworked the week hub away from milestone-driven guidance and into a freer route-based surface.
+- `Main objective` is gone from Overview. The hub now shows:
+  - a visible `Player` card with `Reputation`, `Knowledge`, `Credit score`, and `Bank trust`
+  - a `Possible routes` card driven by selector-based route scoring instead of milestone order
+  - shorter plain-language context notes instead of stacked prescriptive tips
+- Added `getRouteOptions` in `src/game/core/selectors.ts` so the hub can surface the top 3 viable directions from current state (`Steady your life`, `Build income`, `Study and qualify`, `Start investing`, `Move toward property`, `Start something of your own`).
+- Rewrote a large chunk of the hub and selector copy into plainer language with less finance-sim/tutorial framing.
+- Milestones still exist, but they now read more naturally and no longer drive the hub. Examples:
+  - `Own your first cashflow asset` -> `Own something that pays you back`
+  - `Build a $50k empire` -> `Reach $50k net worth`
+- Added a new `Progress` subtab to Ledger and moved milestone visibility there as a quieter journal.
+- Re-verified after the freeform-hub pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Shared Playwright validation:
+  - `output/web-game-freeform-hub/state-0.json` shows `activeView: "overview"` and `activeSubtab: "hub"` after the rebuild.
+- Direct browser captures:
+  - `output/web-game-freeform-hub/overview-top.png` shows the rebuilt Overview with the visible player stats and route cards.
+  - `output/web-game-freeform-hub/ledger-progress.png` plus `ledger-progress-state.json` confirm the new `Ledger > Progress` journal with `activeSubtab: "progress"`.
+- Browser-exported state still matches the visible UI and no `errors-*.json` files were generated for the freeform-hub validation run.
 
 TODO
 - Add deeper browser coverage for subtab switching itself. The shared Playwright client can validate the new UI state export already, but a richer direct Playwright pass would let us click specific subtabs and filters instead of only validating defaults plus week advancement.
