@@ -254,6 +254,29 @@ TODO
   - No `errors-*.json` files were generated during the shared client run.
 - The old sticky-header path is now removed from the actual app shell, even though some legacy header CSS still exists unused in `App.css` and could be cleaned up later.
 - The planner/result loop currently uses a curated generic action catalog (`extra shift`, `best gig`, `sleep in`, `study block`, `market research`, etc.) rather than every deep system action being plannable yet. It is a strong first pass, but there is room to make more section-specific actions schedulable.
+- Continued the planner pass after the initial left-rail merge:
+  - added more concrete week actions where the state supports them, including `Course catch-up`, `Buy 1 share of CITY/YIELD`, `Follow live lead`, `Fix up <property>`, and `Tune up <business>`
+  - tightened the old money-admin planner option so it only appears when it is actually actionable
+  - planner options now draw more directly from existing game systems instead of only generic stat-shift buttons
+- Added shallow follow-up event chains from planned actions:
+  - extra shift can create `Your supervisor notices the extra effort`
+  - study can create `You find a cleaner way to study`
+  - networking can create `A recruiter actually calls back`
+  - market/property/business planner actions can now open their own themed follow-up cards too
+- Follow-up week-event cards are now merged into the next week instead of being wiped by the normal event refresh, so planned-week consequences can carry forward visibly.
+- Re-verified after the richer planner/follow-up-event pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Browser validation for the richer planner pass:
+  - Shared Playwright client:
+    - `output/web-game-left-rail-idle-v2/state-0.json` confirms the rebuilt shell still exports correctly after the planner expansion.
+    - `output/web-game-left-rail-idle-v2/shot-0.png` confirms the overview shell still renders cleanly with no regression from the new action catalog.
+  - Direct Playwright captures:
+    - `output/web-game-planner-followups/planned-week-state.json` confirms a three-slot plan using `Pick up an extra shift`, `Study block`, and `Reach out`.
+    - `output/web-game-planner-followups/settled-week-state.json` confirms the resolved week now carries forward four live event cards, including the new follow-ups (`Your supervisor notices the extra effort`, `You find a cleaner way to study`, `A recruiter actually calls back`).
+    - `output/web-game-planner-followups/planned-week.png` and `settled-week.png` show the planner before and after the week resolves.
+  - No `errors-*.json` files were generated during the shared client rerun.
+- The next strongest gameplay step is still deeper system-specific planning:
+  - make more planner actions route into concrete banking/market/property/business decisions with clearer previews
+  - consider pausing resolution when a follow-up event appears mid-week instead of only surfacing it for the next decision window
 - A planned week can still settle into debt if the chosen mix ignores cash pressure. That is intentional system-wise, but the next balancing pass may want clearer preview language or softer early-week defaults.
 - The mobile hints reveal pill was moved away from center-screen, but it still sits over content because it is fixed. If the cleaner shell is the priority, the next pass should probably collapse mobile hints into the drawer/top bar instead of keeping a floating pill.
 - Add deeper browser coverage for subtab switching itself. The shared Playwright client can validate the new UI state export already, but a richer direct Playwright pass would let us click specific subtabs and filters instead of only validating defaults plus week advancement.

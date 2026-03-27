@@ -7,7 +7,7 @@ import { PERSONAL_ACTION_MAP } from '../../features/personal/data'
 import { PROPERTIES, PROPERTY_MAP, TENANT_PROFILES, TENANT_PROFILE_MAP } from '../../features/property/data'
 import { CONTACTS, DISTRICTS, DISTRICT_MAP, FOOD_SURVIVAL_EVENTS, HOUSING_SURVIVAL_EVENTS, LIFE_EVENTS, MONTHLY_EVENTS, RIVALS, SHARED_HOUSING_EVENTS, STARTER_BREAK_EVENTS, TRANSPORT_SURVIVAL_EVENTS } from '../../features/world/data'
 import { money } from './format'
-import { getWeekEventCards } from './planning'
+import { getWeekEventCards, getWeekFollowUpEventCards, mergeWeekEventCards } from './planning'
 import { hydrateState } from './storage'
 import type { ContactState, Course, DebtAccount, GameAction, GameState, LifeEvent, MarketNews, MonthlySnapshot, Opportunity, Tone, WeekEventOption, WeekResolutionResult } from './types'
 import { canBuyBusiness, canBuyProperty, canOpenCreditCard, canRunGig, canTakeBusinessLoan, canTakeJob, canTakeSideJob, clamp, getBondValue, getBondYield, getBusinessDebtBalance, getBusinessMonthlyProfit, getBusinessValue, getComplianceRisk, getCreditCardAccount, getCreditUtilization, getDebtTotal, getInterestRate, getLifestyleConditionShift, getLifestyleSwitchCost, getLivingCost, getLockedReason, getMonthlyTaxEstimate, getNetWorth, getPassiveIncomePreview, getPropertyAskingPrice, getPropertyRent, getPropertyUpkeep, getPropertyValue, getRenovationBoost, getRenovationCost, getSavingsRate, getTradingFee, hasStableHousing, hasUpgrade, randomBetween, randomInt, randomItem, roundPrice, toWeeklyAmount, WEEKS_PER_MONTH } from './utils'
@@ -212,6 +212,17 @@ function applyPlannedWeekAction(state: GameState, slotIndex: number) {
     detail = 'You put real time into study instead of only reacting to the week.'
     deltas = ['Knowledge +2', 'Stress +2', 'Energy -3']
     tone = 'good'
+  } else if (plannedAction.id === 'course-catchup') {
+    nextState = applyConditionShift(
+      {
+        ...state,
+        knowledge: clamp(state.knowledge + 2, 0, 999),
+      },
+      { stress: 1, energy: -2 },
+    )
+    detail = 'You stayed on top of your current program instead of letting it drift.'
+    deltas = ['Knowledge +2', 'Stress +1', 'Energy -2']
+    tone = 'good'
   } else if (plannedAction.id === 'network-round') {
     nextState = adjustContact(
       applyConditionShift({ ...state }, { stress: 1, reputation: 1 }),
@@ -282,6 +293,74 @@ function applyPlannedWeekAction(state: GameState, slotIndex: number) {
     detail = 'You priced out a tiny operator lane and made a few useful calls.'
     deltas = ['Knowledge +1', 'Rep +1', 'Contractor +2']
     tone = 'good'
+  } else if (plannedAction.id === 'starter-etf-buy' && plannedAction.sourceRef) {
+    const stock = state.market.find((item) => item.symbol === plannedAction.sourceRef)
+    if (stock) {
+      const totalCost = stock.price + getTradingFee(state)
+      if (state.cash >= totalCost) {
+        const existing = state.holdings[stock.symbol]
+        const shares = (existing?.shares ?? 0) + 1
+        const averageCost = ((existing?.averageCost ?? 0) * (existing?.shares ?? 0) + stock.price) / shares
+        nextState = applyConditionShift(
+          {
+            ...state,
+            cash: state.cash - totalCost,
+            holdings: {
+              ...state.holdings,
+              [stock.symbol]: { shares, averageCost: roundPrice(averageCost) },
+            },
+          },
+          { stress: state.bankAccount ? 1 : 2 },
+        )
+        detail = `You used an open day to start a real market position in ${stock.symbol}.`
+        deltas = [money(-totalCost), `${stock.symbol} +1`, state.bankAccount ? 'Stress +1' : 'Stress +2']
+        tone = 'good'
+      }
+    }
+  } else if (plannedAction.id === 'follow-live-lead' && plannedAction.sourceRef) {
+    const opportunity = state.opportunities.find((item) => item.id === plannedAction.sourceRef)
+    const claimedState = gameReducer(state, { type: 'CLAIM_OPPORTUNITY', opportunityId: plannedAction.sourceRef })
+    if (opportunity && claimedState !== state) {
+      nextState = claimedState
+      detail = `You followed through on ${opportunity.title.toLowerCase()} while it was still live.`
+      deltas = ['Lead pushed forward', 'Contact +3']
+      tone = 'good'
+    } else if (opportunity) {
+      nextState = applyConditionShift(adjustContact(state, opportunity.contactId, 2), { reputation: 1 })
+      detail = `You chased ${opportunity.title.toLowerCase()}, but it stayed a warm lead instead of turning immediately.`
+      deltas = ['Rep +1', 'Contact +2']
+      tone = 'neutral'
+    }
+  } else if (plannedAction.id === 'property-tune-up' && plannedAction.sourceRef) {
+    const property = state.properties.find((item) => item.uid === plannedAction.sourceRef)
+    const cost = getRenovationCost(state)
+    if (property && state.cash >= cost) {
+      nextState = gameReducer(state, { type: 'RENOVATE_PROPERTY', propertyUid: property.uid })
+      if (nextState !== state) {
+        detail = `You spent the day tightening up ${PROPERTY_MAP[property.templateId].title} before it slipped further.`
+        deltas = [money(-cost), 'Condition up', 'Stress +6']
+        tone = 'good'
+      }
+    }
+  } else if (plannedAction.id === 'business-tune-up' && plannedAction.sourceRef) {
+    const business = state.businesses.find((item) => item.uid === plannedAction.sourceRef)
+    if (business && state.cash >= 260) {
+      nextState = gameReducer(state, { type: 'INVEST_IN_BUSINESS', businessUid: business.uid, focus: 'maintenance' })
+      if (nextState !== state) {
+        detail = `You used the day to shore up ${BUSINESS_MAP[business.templateId].title} instead of letting small issues stack up.`
+        deltas = [money(-260), 'Condition up', 'Stress +2']
+        tone = 'good'
+      }
+    }
+  }
+
+  const followUpCards = getWeekFollowUpEventCards(plannedAction.id)
+  if (followUpCards.length > 0) {
+    nextState = {
+      ...nextState,
+      activeWeekEventCards: mergeWeekEventCards(nextState.activeWeekEventCards, followUpCards).slice(0, 4),
+    }
+    deltas = [...deltas, `New event${followUpCards.length > 1 ? 's' : ''}`]
   }
 
   return pushWeekResolutionResult(
@@ -2583,7 +2662,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     stateAfterLife.weekPlanCommitted = false
     stateAfterLife.weekResolutionCursor = 0
     stateAfterLife.weekResolutionPhase = hadCommittedPlan ? 'settled' : 'idle'
-    stateAfterLife.activeWeekEventCards = getWeekEventCards(stateAfterLife)
+    stateAfterLife.activeWeekEventCards = mergeWeekEventCards(stateAfterLife.activeWeekEventCards, getWeekEventCards(stateAfterLife)).slice(0, 4)
 
     return pushLog(stateAfterLife, isMonthEnd ? event.title : `Week ${state.week} closed`, notes.join(' '), salary + rentalIncome + businessIncome + dividends + bondIncome + savingsInterest - maintenance - livingCost - debtService >= 0 ? 'good' : 'bad')
   }

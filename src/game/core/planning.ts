@@ -1,7 +1,9 @@
 import { GIGS, SIDE_JOB_MAP } from '../../features/career/data'
+import { BUSINESS_MAP } from '../../features/business/data'
+import { PROPERTY_MAP } from '../../features/property/data'
 import { PERSONAL_ACTION_MAP } from '../../features/personal/data'
 import type { GameState, PlannedWeekAction, WeekEventCard } from './types'
-import { canRunGig, canTakeSideJob, hasStableHousing } from './utils'
+import { canRunGig, canTakeSideJob, getRenovationCost, getTradingFee, hasStableHousing } from './utils'
 
 function addIf<T>(items: T[], condition: unknown, value: T) {
   if (condition) items.push(value)
@@ -11,6 +13,18 @@ export function getWeekPlanOptions(state: GameState): PlannedWeekAction[] {
   const options: PlannedWeekAction[] = []
   const starterSideJob = SIDE_JOB_MAP['delivery-route']
   const bestGig = GIGS.filter((gig) => canRunGig(state, gig)).sort((left, right) => right.payout - left.payout)[0]
+  const affordableStarterEtf = ['CITY', 'YIELD']
+    .map((symbol) => state.market.find((stock) => stock.symbol === symbol))
+    .find((stock) => stock && state.cash >= stock.price + getTradingFee(state))
+  const actionableOpportunity = state.opportunities.find((opportunity) => !opportunity.cashCost || state.cash >= opportunity.cashCost)
+  const repairTarget = state.properties
+    .filter((property) => property.condition < 92)
+    .slice()
+    .sort((left, right) => left.condition - right.condition)[0]
+  const businessTarget = state.businesses
+    .filter((business) => business.active)
+    .slice()
+    .sort((left, right) => left.condition - right.condition)[0]
 
   options.push({
     id: 'focus-shift',
@@ -77,6 +91,20 @@ export function getWeekPlanOptions(state: GameState): PlannedWeekAction[] {
     preview: 'Knowledge up, energy down a bit, stress up a touch.',
   })
 
+  addIf(
+    options,
+    state.educationEnrollment,
+    {
+      id: 'course-catchup',
+      kind: 'growth',
+      label: 'Course catch-up',
+      detail: 'Use a quieter day to stay on top of the program you already committed to.',
+      sourceRef: state.educationEnrollment?.programId,
+      actionCost: 1,
+      preview: 'Knowledge up and the program feels less heavy next week.',
+    },
+  )
+
   options.push({
     id: 'network-round',
     kind: 'growth',
@@ -86,17 +114,21 @@ export function getWeekPlanOptions(state: GameState): PlannedWeekAction[] {
     preview: 'Reputation up, one contact gets closer, and a new lead might appear.',
   })
 
-  options.push({
-    id: 'bank-admin',
-    kind: 'money',
-    label: state.bankAccount ? 'Money admin' : 'Open your account',
-    detail: state.bankAccount
-      ? 'Tidy up the money side of your week, move some cash, and keep the basics in order.'
-      : 'Use the day to stop living in pure cash and get your banking set up.',
-    actionCost: 1,
-    preview: state.bankAccount ? 'A calmer, cleaner money week.' : 'Costs cash now, makes the next weeks smoother.',
-    oncePerWeek: true,
-  })
+  addIf(
+    options,
+    state.bankAccount || state.cash >= 25,
+    {
+      id: 'bank-admin',
+      kind: 'money',
+      label: state.bankAccount ? 'Money admin' : 'Open your account',
+      detail: state.bankAccount
+        ? 'Tidy up the money side of your week, move some cash, and keep the basics in order.'
+        : 'Use the day to stop living in pure cash and get your banking set up.',
+      actionCost: 1,
+      preview: state.bankAccount ? 'A calmer, cleaner money week.' : 'Costs cash now, makes the next weeks smoother.',
+      oncePerWeek: true,
+    },
+  )
 
   addIf(
     options,
@@ -108,6 +140,34 @@ export function getWeekPlanOptions(state: GameState): PlannedWeekAction[] {
       detail: 'Review names, tighten your watchlist, and learn before taking risk.',
       actionCost: 1,
       preview: 'Knowledge up, stress down a little, maybe a new market lead.',
+    },
+  )
+
+  addIf(
+    options,
+    affordableStarterEtf,
+    {
+      id: 'starter-etf-buy',
+      kind: 'money',
+      label: `Buy 1 share of ${affordableStarterEtf?.symbol}`,
+      detail: `${affordableStarterEtf?.name} is a calmer first market step than trying to guess the wildest single-name move.`,
+      sourceRef: affordableStarterEtf?.symbol,
+      actionCost: 1,
+      preview: `A real market position using ${affordableStarterEtf?.symbol}.`,
+    },
+  )
+
+  addIf(
+    options,
+    actionableOpportunity,
+    {
+      id: 'follow-live-lead',
+      kind: 'money',
+      label: `Follow ${actionableOpportunity?.title}`,
+      detail: actionableOpportunity?.detail ?? 'Use a day to push a live lead forward while it is still warm.',
+      sourceRef: actionableOpportunity?.id,
+      actionCost: 1,
+      preview: 'This can turn a loose lead into something more concrete.',
     },
   )
 
@@ -126,6 +186,20 @@ export function getWeekPlanOptions(state: GameState): PlannedWeekAction[] {
 
   addIf(
     options,
+    repairTarget && state.cash >= getRenovationCost(state),
+    {
+      id: 'property-tune-up',
+      kind: 'money',
+      label: `Fix up ${PROPERTY_MAP[repairTarget?.templateId ?? 'parking-space'].title}`,
+      detail: 'Use an open day to keep your worst property from quietly becoming a bigger problem.',
+      sourceRef: repairTarget?.uid,
+      actionCost: 1,
+      preview: 'Condition up now, fewer ugly surprises later.',
+    },
+  )
+
+  addIf(
+    options,
     state.reputation >= 1 || state.businesses.length > 0,
     {
       id: 'business-sketch',
@@ -137,7 +211,207 @@ export function getWeekPlanOptions(state: GameState): PlannedWeekAction[] {
     },
   )
 
+  addIf(
+    options,
+    businessTarget && state.cash >= 260,
+    {
+      id: 'business-tune-up',
+      kind: 'money',
+      label: `Tune up ${BUSINESS_MAP[businessTarget?.templateId ?? 'resale-cart'].title}`,
+      detail: 'Use a day to tighten operations before small issues turn into a bad month.',
+      sourceRef: businessTarget?.uid,
+      actionCost: 1,
+      preview: 'Condition up, operations steadier, and the next month should feel less noisy.',
+    },
+  )
+
   return options
+}
+
+export function getWeekFollowUpEventCards(actionId: string): WeekEventCard[] {
+  if (actionId === 'focus-shift') {
+    return [
+      {
+        id: 'manager-nod',
+        title: 'Your supervisor notices the extra effort',
+        detail: 'It is not a promotion, but you did make a better impression than usual.',
+        category: 'work',
+        tone: 'good',
+        options: [
+          {
+            id: 'bank-the-goodwill',
+            label: 'Bank the goodwill',
+            detail: 'Let it sit and take the better standing.',
+            reputation: 1,
+            bankTrust: 1,
+          },
+          {
+            id: 'ask-for-more-hours',
+            label: 'Ask for more hours',
+            detail: 'Push the advantage a little harder while you have it.',
+            cash: 45,
+            stress: 2,
+            reputation: 1,
+          },
+        ],
+      },
+    ]
+  }
+
+  if (actionId === 'network-round') {
+    return [
+      {
+        id: 'recruiter-call-back',
+        title: 'A recruiter actually calls back',
+        detail: 'The message thread turned into something more real than you expected.',
+        category: 'social',
+        tone: 'good',
+        options: [
+          {
+            id: 'hear-them-out',
+            label: 'Hear them out',
+            detail: 'Take the conversation and keep the relationship warm.',
+            reputation: 1,
+            contactId: 'recruiter',
+          },
+          {
+            id: 'keep-it-light',
+            label: 'Keep it light',
+            detail: 'Stay friendly without turning it into work right now.',
+            stress: -2,
+          },
+        ],
+      },
+    ]
+  }
+
+  if (actionId === 'market-research' || actionId === 'starter-etf-buy') {
+    return [
+      {
+        id: 'watchlist-flash',
+        title: 'One of your market names moves hard',
+        detail: 'The tape suddenly looks more alive now that you are actually watching it.',
+        category: 'market',
+        tone: 'neutral',
+        options: [
+          {
+            id: 'journal-it',
+            label: 'Write it down',
+            detail: 'Treat it like information, not a dare.',
+            knowledge: 1,
+          },
+          {
+            id: 'ping-broker',
+            label: 'Ping your broker contact',
+            detail: 'Ask whether there is anything real under the move.',
+            contactId: 'broker',
+            reputation: 1,
+          },
+          {
+            id: 'leave-it',
+            label: 'Leave it alone',
+            detail: 'You do not need to react to every move on the board.',
+            stress: -1,
+          },
+        ],
+      },
+    ]
+  }
+
+  if (actionId === 'property-scout' || actionId === 'property-tune-up') {
+    return [
+      {
+        id: 'broker-whisper',
+        title: 'A broker sends you a quiet note',
+        detail: 'A small owner wants out and the deal might not stay private for long.',
+        category: 'property',
+        tone: 'neutral',
+        options: [
+          {
+            id: 'ask-for-docs',
+            label: 'Ask for the docs',
+            detail: 'Pay a little for the paperwork and stay close to the lead.',
+            cash: -20,
+            reputation: 1,
+            contactId: 'broker',
+            storyFlag: 'room-lead-open',
+          },
+          {
+            id: 'keep-the-number',
+            label: 'Keep the number',
+            detail: 'Stay warm without spending right now.',
+            reputation: 1,
+          },
+        ],
+      },
+    ]
+  }
+
+  if (actionId === 'business-sketch' || actionId === 'business-tune-up') {
+    return [
+      {
+        id: 'supplier-intro',
+        title: 'Someone offers a useful supplier intro',
+        detail: 'It is the kind of small break that only matters if you follow it up.',
+        category: 'business',
+        tone: 'good',
+        options: [
+          {
+            id: 'take-the-intro',
+            label: 'Take the intro',
+            detail: 'Meet them and see what kind of lane it opens.',
+            reputation: 1,
+            contactId: 'contractor',
+          },
+          {
+            id: 'wait-on-it',
+            label: 'Wait on it',
+            detail: 'Keep your focus where it already is this week.',
+            stress: -1,
+          },
+        ],
+      },
+    ]
+  }
+
+  if (actionId === 'study-block' || actionId === 'course-catchup') {
+    return [
+      {
+        id: 'study-nudge',
+        title: 'You find a cleaner way to study',
+        detail: 'A small routine tweak could make the whole learning path feel less punishing.',
+        category: 'social',
+        tone: 'neutral',
+        options: [
+          {
+            id: 'keep-the-routine',
+            label: 'Keep the routine',
+            detail: 'Stay steady and keep building.',
+            knowledge: 1,
+            stress: 1,
+          },
+          {
+            id: 'take-the-easier-night',
+            label: 'Take the easier night',
+            detail: 'Protect your body and let the pace breathe a bit.',
+            stress: -2,
+            energy: 1,
+          },
+        ],
+      },
+    ]
+  }
+
+  return []
+}
+
+export function mergeWeekEventCards(existing: WeekEventCard[], additions: WeekEventCard[]) {
+  const seen = new Set<string>()
+  return [...existing, ...additions].filter((card) => {
+    if (seen.has(card.id)) return false
+    seen.add(card.id)
+    return true
+  })
 }
 
 export function getWeekEventCards(state: GameState): WeekEventCard[] {
