@@ -287,6 +287,31 @@ TODO
 - If the new themed shells feel too wordy, cut more explanatory body copy now that the IA is doing more of the organizational work.
 - The Personal section currently focuses on active recovery and social/leisure stabilization. If it proves fun, the next good extension is low-stakes hobby or routine chains that add flavor without turning downtime into another income engine.
 - Revisit the Lifestyle card density. The expanded living ladder is useful, but the housing view in particular could probably use tighter vertical card packing now that there are more entries.
+- Applied a week-hub redundancy cleanup under the new `single source` rule:
+  - removed the standalone `Condition` and `Player` cards from Overview
+  - kept persistent money/condition/player state in the left rail only
+  - compressed the top pressure tags so the story card now only shows the 1-2 factors actually driving the week instead of echoing the full lifestyle setup
+  - added a small route-context note only when it helps explain why a path is opening up, instead of repeating a full stat grid
+- Kept the week hub focused on play surfaces:
+  - `Current situation`
+  - `Week plan`
+  - `Week resolution`
+  - `Live situations`
+  - `Possible routes`
+  - `Live openings`
+  - `Recent beats`
+- Shortened the empty-state copy in `Week resolution` so the card reads more like a game surface and less like an explainer panel.
+- Removed the now-dead overview CSS for the deleted condition/player cards and let the remaining cards take the space instead of filling it with more status UI.
+- Re-verified after the redundancy-cleanup pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Browser validation for the redundancy-cleanup pass:
+  - Shared Playwright client:
+    - `output/web-game-overview-redundancy-idle/state-0.json` confirms the overview still exports correctly after the cleanup with `activeSubtab: "hub"` and `toolbarSummary: "3 open days | 0 live leads | 1 featured situations"`.
+    - `output/web-game-overview-redundancy-idle/shot-0.png` confirms the cleaned default hub renders without the removed cards.
+  - Direct Playwright captures:
+    - `output/web-game-overview-redundancy/desktop-overview.png` plus `desktop-overview-state.json` confirm the desktop hub stays complete after removing `Condition` and `Player`.
+    - `output/web-game-overview-redundancy/mobile-overview.png` confirms the mobile hub remains readable with the lighter card set.
+    - `output/web-game-overview-redundancy/mobile-drawer.png` plus `mobile-drawer-state.json` confirm the rail/drawer is still the canonical place for persistent player and condition state.
+  - No `errors-*.json` files were generated during the shared-client validation run.
 - Reordered the left rail so navigation now sits directly under the timeline block, above the role/status containers. The rail shell itself now scrolls, while the top timeline + nav stack stays sticky inside it so the section list remains visible on shorter desktop heights and inside the mobile drawer.
 - Replaced raw week-first labeling in the shell with a calendar-style readout:
   - desktop rail and mobile top bar now show `Year X / Month Y / WZ`

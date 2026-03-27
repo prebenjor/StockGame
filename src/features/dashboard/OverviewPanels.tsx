@@ -3,7 +3,7 @@ import { FOOD_OPTION_MAP, HOUSING_OPTION_MAP, TRANSPORT_OPTION_MAP, WELLNESS_OPT
 import { CONTACT_MAP } from '../../features/world/data'
 import { money } from '../../game/core/format'
 import { getFeaturedWeekSituations, getWeekPlanOptions } from '../../game/core/planning'
-import { getConditionTone, getRouteOptions, getTips, getWeeklyRunway } from '../../game/core/selectors'
+import { getRouteOptions, getTips, getWeeklyRunway } from '../../game/core/selectors'
 import type { GameAction, GameState, PlannedWeekAction, WeekPlanKind } from '../../game/core/types'
 import { canOpenCreditCard, hasStableHousing } from '../../game/core/utils'
 
@@ -101,6 +101,70 @@ function getPlanContext(state: GameState) {
   return 'That plan has landed. You can read it, then shape the next week.'
 }
 
+function getPressureTags(
+  state: GameState,
+  labels: {
+    housing: string
+    transport: string
+    food: string
+    wellness: string
+  },
+) {
+  const tags: string[] = []
+
+  if (!hasStableHousing(state)) {
+    tags.push(`Housing ${labels.housing}`)
+  }
+
+  if (!state.bankAccount) {
+    tags.push('Cash only')
+  }
+
+  if (state.foodTier === 'skip-meals' || state.foodTier === 'cheap-eats') {
+    tags.push(`Food ${labels.food}`)
+  }
+
+  if (state.wellnessTier === 'none') {
+    tags.push(`Recovery ${labels.wellness}`)
+  }
+
+  if (state.transportTier === 'foot') {
+    tags.push(`Transport ${labels.transport}`)
+  }
+
+  if (state.stress >= 70) {
+    tags.push('Stress running hot')
+  }
+
+  if (state.energy <= 35) {
+    tags.push('Low energy')
+  }
+
+  if (tags.length < 2 && state.actionPoints > 1) {
+    tags.push(`${state.actionPoints} open days`)
+  }
+
+  return tags.slice(0, 2)
+}
+
+function getRouteContextLine(state: GameState) {
+  const notes: string[] = []
+
+  if (state.knowledge >= 6 || state.reputation >= 2) {
+    notes.push('Study and better work are starting to look real.')
+  }
+
+  if (state.bankAccount && state.creditScore >= 440) {
+    notes.push('Lending is starting to open up a little.')
+  }
+
+  if (state.bankAccount && state.cash + state.savingsBalance >= 500) {
+    notes.push('Capital paths are no longer just background dreams.')
+  }
+
+  return notes[0] ?? null
+}
+
 export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
   const weeklyRunway = getWeeklyRunway(state)
   const tips = getTips(state)
@@ -116,6 +180,13 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
   const planOptions = getWeekPlanOptions(state)
   const featuredSituations = getFeaturedWeekSituations(state)
   const visibleSituations = [featuredSituations.major, featuredSituations.side].filter(Boolean)
+  const pressureTags = getPressureTags(state, {
+    housing: housingLabel,
+    transport: transportLabel,
+    food: foodLabel,
+    wellness: wellnessLabel,
+  })
+  const routeContextLine = getRouteContextLine(state)
 
   useEffect(() => {
     if (!state.weekPlanCommitted || state.weekResolutionPhase !== 'resolving') return
@@ -177,12 +248,15 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
             <span>{state.actionPoints} open days</span>
           </div>
           <p>{pressure.detail}</p>
-          <div className="tag-row">
-            <span className="tag">Housing {housingLabel}</span>
-            <span className="tag">Transport {transportLabel}</span>
-            <span className="tag">Food {foodLabel}</span>
-            <span className="tag">Recovery {wellnessLabel}</span>
-          </div>
+          {pressureTags.length > 0 ? (
+            <div className="tag-row">
+              {pressureTags.map((tag) => (
+                <span className="tag" key={tag}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </article>
 
         <article className="hub-card planner planner-wide">
@@ -263,7 +337,7 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
             <span>{state.weekResolutionPhase === 'resolving' ? 'In motion' : state.weekResolutionResults.length > 0 ? 'Last week' : 'Ready'}</span>
           </div>
           {state.weekResolutionResults.length === 0 ? (
-            <p className="compact-note">Once you run a planned week, each open day will land here as a visible result instead of just disappearing into a number change.</p>
+            <p className="compact-note">Run a planned week and the results will land here day by day.</p>
           ) : (
             <div className="resolution-strip">
               {state.weekResolutionResults.map((result, index) => (
@@ -289,65 +363,12 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
           )}
         </article>
 
-        <article className="hub-card condition">
-          <div className="card-topline">
-            <h3>Condition</h3>
-            <span>How the week feels</span>
-          </div>
-          <div className="condition-strip">
-            <div className="condition-meter">
-              <span>Health</span>
-              <strong className={getConditionTone(state.health)}>{state.health}</strong>
-            </div>
-            <div className="condition-meter">
-              <span>Energy</span>
-              <strong className={getConditionTone(state.energy)}>{state.energy}</strong>
-            </div>
-            <div className="condition-meter">
-              <span>Stress</span>
-              <strong className={getConditionTone(state.stress, true)}>{state.stress}</strong>
-            </div>
-          </div>
-          <div className="open-day-track" aria-label={`${state.actionPoints} open days remaining this week`}>
-            {Array.from({ length: 3 }, (_, index) => (
-              <span className={`open-day-slot ${index < state.actionPoints ? 'open' : 'spent'}`} key={index}>
-                {index < state.actionPoints ? 'Open' : 'Spent'}
-              </span>
-            ))}
-          </div>
-        </article>
-
-        <article className="hub-card player">
-          <div className="card-topline">
-            <h3>Player</h3>
-            <span>What opens up next</span>
-          </div>
-          <div className="player-stat-grid">
-            <div className="player-stat">
-              <span>Reputation</span>
-              <strong>{state.reputation}</strong>
-            </div>
-            <div className="player-stat">
-              <span>Knowledge</span>
-              <strong>{state.knowledge}</strong>
-            </div>
-            <div className="player-stat">
-              <span>Credit score</span>
-              <strong>{state.creditScore}</strong>
-            </div>
-            <div className="player-stat">
-              <span>Bank trust</span>
-              <strong>{state.bankTrust}</strong>
-            </div>
-          </div>
-          <p>These shape what starts to feel realistic next, from jobs and study to property, lending, and small ownership plays.</p>
-        </article>
-
         <article className="hub-card routes">
           <div className="card-topline">
             <h3>Possible routes</h3>
             <span>{routes.length} in view</span>
           </div>
+          {routeContextLine ? <p className="compact-note route-context">{routeContextLine}</p> : null}
           <div className="route-grid">
             {routes.map((route) => (
               <article className="route-card" key={route.id}>

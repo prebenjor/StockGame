@@ -624,47 +624,17 @@ button:focus-visible,
   background: linear-gradient(135deg, rgba(225, 244, 217, 0.72), rgba(255, 255, 255, 0.84));
 }
 
-.condition-strip,
 .suggested-action-grid,
 .opportunity-preview-grid,
-.player-stat-grid,
 .route-grid,
 .hub-event-list {
   display: grid;
   gap: 12px;
 }
 
-.condition-strip {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.player-stat-grid,
 .route-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-
-.condition-meter {
-  display: grid;
-  gap: 6px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  border: 1px solid rgba(120, 79, 41, 0.1);
-  background: rgba(255, 252, 247, 0.76);
-}
-
-.condition-meter span {
-  font-size: 0.68rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #654a31;
-}
-
-.condition-meter strong {
-  font-size: clamp(1.65rem, 1.2rem + 0.8vw, 2.3rem);
-  line-height: 1;
-}
-
-.player-stat,
 .route-card {
   display: grid;
   gap: 8px;
@@ -674,19 +644,12 @@ button:focus-visible,
   background: rgba(255, 252, 247, 0.78);
 }
 
-.player-stat span,
 .route-card span,
 .compact-note {
   font-size: 0.72rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #6a4a2f;
-}
-
-.player-stat strong {
-  font-size: clamp(1.35rem, 1rem + 0.55vw, 1.85rem);
-  line-height: 1;
-  color: #24150c;
 }
 
 .route-card strong {
@@ -699,34 +662,6 @@ button:focus-visible,
   margin: 0;
   color: #513d2f;
   line-height: 1.45;
-}
-
-.open-day-track {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.open-day-slot {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 42px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  border: 1px solid rgba(120, 79, 41, 0.12);
-}
-
-.open-day-slot.open {
-  background: linear-gradient(135deg, rgba(245, 180, 72, 0.22), rgba(255, 255, 255, 0.82));
-  color: #8b5613;
-}
-
-.open-day-slot.spent {
-  background: rgba(230, 220, 210, 0.62);
-  color: #7a6657;
 }
 
 .suggested-action-grid {
@@ -1675,9 +1610,7 @@ button:focus-visible,
     align-items: stretch;
   }
 
-  .condition-strip,
   .suggested-action-grid,
-  .player-stat-grid,
   .route-grid {
     grid-template-columns: 1fr;
   }
@@ -2200,8 +2133,13 @@ button:focus-visible,
 }
 
 .hub-card.resolution,
-.hub-card.live-events {
+.hub-card.live-events,
+.hub-card.routes {
   min-height: 100%;
+}
+
+.route-context {
+  margin: -4px 0 0;
 }
 
 .week-hub-grid > .hub-card {
@@ -2413,9 +2351,7 @@ button:focus-visible,
   .week-hub-grid,
   .planner-option-grid,
   .resolution-strip,
-  .player-stat-grid,
   .route-grid,
-  .condition-strip,
   .opportunity-preview-grid,
   .suggested-action-grid {
     grid-template-columns: 1fr;
