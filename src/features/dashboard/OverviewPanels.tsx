@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { FOOD_OPTION_MAP, HOUSING_OPTION_MAP, TRANSPORT_OPTION_MAP, WELLNESS_OPTION_MAP } from '../../features/lifestyle/data'
 import { CONTACT_MAP } from '../../features/world/data'
 import { money } from '../../game/core/format'
-import { getFeaturedWeekSituations, getWeekPlanOptions } from '../../game/core/planning'
+import {
+  createLeaveOpenWeekAction,
+  getAssignedWeekSlotCount,
+  getFeaturedWeekSituations,
+  getWeekPlanOptions,
+  isWeekPlanReady,
+} from '../../game/core/planning'
 import { getRouteOptions, getTips, getWeeklyRunway } from '../../game/core/selectors'
 import type { GameAction, GameState, PlannedWeekAction, WeekPlanKind } from '../../game/core/types'
 import { canOpenCreditCard, hasStableHousing } from '../../game/core/utils'
@@ -20,6 +26,13 @@ const PLAN_GROUP_LABELS: Record<WeekPlanKind, string> = {
   recovery: 'Recovery',
   growth: 'Growth',
   money: 'Money',
+}
+
+const PLAN_GROUP_ICONS: Record<WeekPlanKind, string> = {
+  work: 'W',
+  recovery: 'R',
+  growth: 'G',
+  money: '$',
 }
 
 const EVENT_CATEGORY_LABELS = {
@@ -120,18 +133,6 @@ function getPressureTags(
     tags.push('Cash only')
   }
 
-  if (state.foodTier === 'skip-meals' || state.foodTier === 'cheap-eats') {
-    tags.push(`Food ${labels.food}`)
-  }
-
-  if (state.wellnessTier === 'none') {
-    tags.push(`Recovery ${labels.wellness}`)
-  }
-
-  if (state.transportTier === 'foot') {
-    tags.push(`Transport ${labels.transport}`)
-  }
-
   if (state.stress >= 70) {
     tags.push('Stress running hot')
   }
@@ -140,8 +141,16 @@ function getPressureTags(
     tags.push('Low energy')
   }
 
-  if (tags.length < 2 && state.actionPoints > 1) {
-    tags.push(`${state.actionPoints} open days`)
+  if (tags.length === 0 && state.foodTier === 'skip-meals') {
+    tags.push(`Food ${labels.food}`)
+  }
+
+  if (tags.length === 0 && state.wellnessTier === 'none') {
+    tags.push(`Recovery ${labels.wellness}`)
+  }
+
+  if (tags.length === 0 && state.transportTier === 'foot') {
+    tags.push(`Transport ${labels.transport}`)
   }
 
   return tags.slice(0, 2)
@@ -165,6 +174,52 @@ function getRouteContextLine(state: GameState) {
   return notes[0] ?? null
 }
 
+function getPlannerTradeoffTags(option: PlannedWeekAction) {
+  switch (option.id) {
+    case 'focus-shift':
+    case 'best-gig':
+      return ['+Cash', '+Stress', '-Energy']
+    case 'steady-side-work':
+      return ['+Future pay', '+Rep']
+    case 'sleep-in':
+      return ['-Stress', '+Energy', '+Health']
+    case 'nature-walk':
+    case 'stay-in':
+      return ['-Stress', '+Energy']
+    case 'study-block':
+    case 'course-catchup':
+      return ['+Knowledge', '+Stress', '-Energy']
+    case 'network-round':
+      return ['+Rep', '+Contact', '+Stress']
+    case 'bank-admin':
+      return option.label === 'Open your account' ? ['-Cash', '+Trust', '-Stress'] : ['+Trust', '-Stress']
+    case 'market-research':
+      return ['+Knowledge', '-Stress']
+    case 'starter-etf-buy':
+      return ['-Cash', '+Position']
+    case 'follow-live-lead':
+      return ['+Lead', '+Rep']
+    case 'property-scout':
+      return ['+Rep', '+Broker']
+    case 'property-tune-up':
+      return ['-Cash', '+Condition']
+    case 'business-sketch':
+      return ['+Knowledge', '+Rep']
+    case 'business-tune-up':
+      return ['-Cash', '+Condition']
+    default:
+      if (option.slotState === 'leave-open') return ['Keep it light']
+      if (option.preview) {
+        return option.preview
+          .split(',')
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .slice(0, 3)
+      }
+      return ['Tactical move']
+  }
+}
+
 export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
   const weeklyRunway = getWeeklyRunway(state)
   const tips = getTips(state)
@@ -177,6 +232,13 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
   const foodLabel = FOOD_OPTION_MAP[state.foodTier].title
   const wellnessLabel = WELLNESS_OPTION_MAP[state.wellnessTier].title
   const [selectedSlot, setSelectedSlot] = useState(0)
+  const [expandedOptions, setExpandedOptions] = useState<string[]>([])
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<WeekPlanKind, boolean>>({
+    work: false,
+    recovery: false,
+    growth: false,
+    money: false,
+  })
   const planOptions = getWeekPlanOptions(state)
   const featuredSituations = getFeaturedWeekSituations(state)
   const visibleSituations = [featuredSituations.major, featuredSituations.side].filter(Boolean)
@@ -187,6 +249,8 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
     wellness: wellnessLabel,
   })
   const routeContextLine = getRouteContextLine(state)
+  const assignedWeekSlots = getAssignedWeekSlotCount(state)
+  const weekPlanReady = isWeekPlanReady(state)
 
   useEffect(() => {
     if (!state.weekPlanCommitted || state.weekResolutionPhase !== 'resolving') return
@@ -212,18 +276,31 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
     return groups
   }, [planOptions])
 
-  const nextSlotIndex = useMemo(() => {
-    const firstEmptyIndex = state.plannedWeekSlots.findIndex((slot) => slot === null)
-    if (firstEmptyIndex >= 0) return firstEmptyIndex
-    return Math.min(selectedSlot, state.plannedWeekSlots.length - 1)
-  }, [selectedSlot, state.plannedWeekSlots])
-
   const assignPlannedAction = (plannedAction: PlannedWeekAction) => {
     if (state.weekPlanCommitted) return
-    dispatch({ type: 'SET_WEEK_SLOT', slotIndex: nextSlotIndex, plannedAction })
-    if (nextSlotIndex < state.plannedWeekSlots.length - 1) {
-      setSelectedSlot(nextSlotIndex + 1)
+
+    const firstEmptyIndex = state.plannedWeekSlots.findIndex((slot) => slot === null)
+    const selectedSlotIsEmpty = state.plannedWeekSlots[selectedSlot] === null
+    const slotIndex = selectedSlotIsEmpty || firstEmptyIndex < 0 ? Math.min(selectedSlot, state.plannedWeekSlots.length - 1) : firstEmptyIndex
+    dispatch({ type: 'SET_WEEK_SLOT', slotIndex, plannedAction })
+
+    const nextEmptyIndex = state.plannedWeekSlots.findIndex((slot, index) => index > slotIndex && slot === null)
+    if (nextEmptyIndex >= 0) {
+      setSelectedSlot(nextEmptyIndex)
     }
+  }
+
+  const toggleExpandedOption = (optionId: string) => {
+    setExpandedOptions((current) =>
+      current.includes(optionId) ? current.filter((id) => id !== optionId) : [...current, optionId],
+    )
+  }
+
+  const toggleCollapsedGroup = (kind: WeekPlanKind) => {
+    setCollapsedGroups((current) => ({
+      ...current,
+      [kind]: !current[kind],
+    }))
   }
 
   return (
@@ -231,7 +308,7 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
       className="panel week-hub-panel"
       data-ui-section="overview"
       data-active-subtab="hub"
-      data-toolbar-summary={`${state.actionPoints} open days | ${liveOpportunities.length} live leads | ${visibleSituations.length} featured situations`}
+      data-toolbar-summary={`${assignedWeekSlots}/3 days assigned | ${liveOpportunities.length} live leads | ${visibleSituations.length} featured situations`}
     >
       <div className="panel-header">
         <div>
@@ -266,65 +343,135 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
           </div>
 
           <div className="week-slot-grid">
-            {state.plannedWeekSlots.map((slot, index) => (
-              <article
-                className={`week-slot-card ${selectedSlot === index ? 'selected' : ''} ${slot ? 'filled' : 'empty'} ${
-                  state.weekResolutionPhase === 'resolving' && index < state.weekResolutionCursor ? 'resolved' : ''
-                }`}
-                key={`slot-${index}`}
-              >
-                <button className="week-slot-hitbox" type="button" onClick={() => setSelectedSlot(index)} disabled={state.weekPlanCommitted}>
-                  <span>Open day {index + 1}</span>
-                  <strong>{slot?.label ?? 'Choose a plan'}</strong>
-                  <p>{slot?.detail ?? 'Leave it open or give this day a job.'}</p>
-                </button>
-                {slot ? (
-                  <button
-                    className="mini-button ghost"
-                    type="button"
-                    onClick={() => dispatch({ type: 'CLEAR_WEEK_SLOT', slotIndex: index })}
-                    disabled={state.weekPlanCommitted}
-                  >
-                    Clear
-                  </button>
-                ) : null}
-              </article>
-            ))}
-          </div>
+            {state.plannedWeekSlots.map((slot, index) => {
+              const slotKindClass = slot?.slotState === 'leave-open' ? 'leave-open' : slot ? `slot-kind-${slot.kind}` : 'empty'
+              return (
+                <article
+                  className={`week-slot-card ${selectedSlot === index ? 'selected' : ''} ${slot ? 'filled' : 'empty'} ${slotKindClass} ${
+                    state.weekResolutionPhase === 'resolving' && index < state.weekResolutionCursor ? 'resolved' : ''
+                  }`}
+                  key={`slot-${index}`}
+                >
+                  <div className="week-slot-toolbar">
+                    <span>Open day {index + 1}</span>
+                    {slot ? (
+                      <button
+                        className="slot-clear-button"
+                        type="button"
+                        onClick={() => dispatch({ type: 'CLEAR_WEEK_SLOT', slotIndex: index })}
+                        disabled={state.weekPlanCommitted}
+                        aria-label={`Clear open day ${index + 1}`}
+                      >
+                        X
+                      </button>
+                    ) : null}
+                  </div>
 
-          <div className="planner-action-row">
-            <button className="primary-button" type="button" onClick={() => dispatch({ type: 'COMMIT_WEEK_PLAN' })} disabled={!state.plannedWeekSlots.some(Boolean) || state.weekPlanCommitted}>
-              Run This Week
-            </button>
-            <button className="secondary-button" type="button" onClick={() => dispatch({ type: 'CANCEL_WEEK_PLAN' })} disabled={state.weekResolutionPhase === 'resolving' || (!state.plannedWeekSlots.some(Boolean) && state.weekResolutionResults.length === 0)}>
-              Clear Plan
-            </button>
+                  <button className="week-slot-hitbox" type="button" onClick={() => setSelectedSlot(index)} disabled={state.weekPlanCommitted}>
+                    {slot ? (
+                      <>
+                        <span className={`slot-kind-badge ${slot.slotState === 'leave-open' ? 'neutral' : slot.kind}`}>
+                          {slot.slotState === 'leave-open' ? 'Open' : PLAN_GROUP_LABELS[slot.kind]}
+                        </span>
+                        <strong>{slot.label}</strong>
+                        <p>{slot.detail}</p>
+                      </>
+                    ) : (
+                      <>
+                        <span className="slot-empty-mark" aria-hidden="true">
+                          +
+                        </span>
+                        <strong>Assign an activity</strong>
+                        <p>Pick from the options below.</p>
+                      </>
+                    )}
+                  </button>
+
+                  {!slot ? (
+                    <button
+                      className="mini-button ghost slot-leave-open"
+                      type="button"
+                      onClick={() => assignPlannedAction(createLeaveOpenWeekAction(index))}
+                      disabled={state.weekPlanCommitted}
+                    >
+                      Leave open
+                    </button>
+                  ) : null}
+                </article>
+              )
+            })}
           </div>
 
           <div className="planner-catalog">
             {Object.entries(groupedPlanOptions).map(([kind, options]) =>
               options.length > 0 ? (
-                <section className="planner-group" key={kind}>
-                  <div className="card-topline">
-                    <h4>{PLAN_GROUP_LABELS[kind as WeekPlanKind]}</h4>
-                    <span>{options.length} options</span>
-                  </div>
-                  <div className="planner-option-grid">
-                    {options.map((option) => (
-                      <button
-                        className="planner-option-card"
-                        key={option.id}
-                        type="button"
-                        onClick={() => assignPlannedAction(option)}
-                        disabled={state.weekPlanCommitted || !!(option.oncePerWeek && state.plannedWeekSlots.some((slot) => slot?.id === option.id))}
-                      >
-                        <span>{PLAN_GROUP_LABELS[option.kind]}</span>
-                        <strong>{option.label}</strong>
-                        <p>{option.detail}</p>
-                        {option.preview ? <small>{option.preview}</small> : null}
-                      </button>
-                    ))}
-                  </div>
+                <section className={`planner-group planner-group-${kind}`} key={kind}>
+                  <button
+                    className="planner-group-header"
+                    type="button"
+                    onClick={() => toggleCollapsedGroup(kind as WeekPlanKind)}
+                    aria-expanded={!collapsedGroups[kind as WeekPlanKind]}
+                  >
+                    <div className="planner-group-title">
+                      <span className={`planner-group-icon ${kind}`}>{PLAN_GROUP_ICONS[kind as WeekPlanKind]}</span>
+                      <strong>{PLAN_GROUP_LABELS[kind as WeekPlanKind]}</strong>
+                    </div>
+                    <div className="planner-group-meta">
+                      <span className="planner-group-count">{options.length} options</span>
+                      <span className="planner-group-chevron">{collapsedGroups[kind as WeekPlanKind] ? '+' : '-'}</span>
+                    </div>
+                  </button>
+
+                  {!collapsedGroups[kind as WeekPlanKind] ? (
+                    <div className="planner-option-grid">
+                      {options.map((option) => {
+                        const expanded = expandedOptions.includes(option.id)
+                        const assignedIndex = state.plannedWeekSlots.findIndex((slot) => slot?.id === option.id)
+                        const isAssigned = assignedIndex >= 0
+                        const disabled = state.weekPlanCommitted || !!(option.oncePerWeek && isAssigned)
+
+                        return (
+                          <article className={`planner-option-card ${isAssigned ? 'assigned' : ''}`} key={option.id}>
+                            <button
+                              className="planner-option-hitbox"
+                              type="button"
+                              onClick={() => assignPlannedAction(option)}
+                              disabled={disabled}
+                            >
+                              <div className="planner-option-topline">
+                                <span className={`slot-kind-badge ${option.kind}`}>{PLAN_GROUP_LABELS[option.kind]}</span>
+                                {isAssigned ? <span className="planner-option-assigned">Assigned to Day {assignedIndex + 1}</span> : null}
+                              </div>
+                              <strong>{option.label}</strong>
+                              <div className="planner-tradeoff-row">
+                                {getPlannerTradeoffTags(option).map((tag) => (
+                                  <span className="planner-tradeoff-tag" key={`${option.id}-${tag}`}>
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </button>
+
+                            <button
+                              className="planner-expand-toggle"
+                              type="button"
+                              onClick={() => toggleExpandedOption(option.id)}
+                              aria-expanded={expanded}
+                            >
+                              {expanded ? 'Less' : 'Details'}
+                            </button>
+
+                            {expanded ? (
+                              <div className="planner-option-detail">
+                                <p>{option.detail}</p>
+                                {option.preview ? <small>{option.preview}</small> : null}
+                              </div>
+                            ) : null}
+                          </article>
+                        )
+                      })}
+                    </div>
+                  ) : null}
                 </section>
               ) : null,
             )}
@@ -337,7 +484,7 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
             <span>{state.weekResolutionPhase === 'resolving' ? 'In motion' : state.weekResolutionResults.length > 0 ? 'Last week' : 'Ready'}</span>
           </div>
           {state.weekResolutionResults.length === 0 ? (
-            <p className="compact-note">Run a planned week and the results will land here day by day.</p>
+            <p className="compact-note">Run the week and the day-by-day results land here.</p>
           ) : (
             <div className="resolution-strip">
               {state.weekResolutionResults.map((result, index) => (
@@ -500,6 +647,32 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
             ) : null}
           </div>
         </article>
+      </div>
+
+      <div className="week-run-bar">
+        <div className="week-run-summary">
+          <strong>{assignedWeekSlots} of 3 days assigned</strong>
+          <span>{weekPlanReady ? 'The week is ready to run.' : 'Assign every day or mark it Leave open first.'}</span>
+        </div>
+        <div className="week-run-actions">
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => dispatch({ type: 'CANCEL_WEEK_PLAN' })}
+            disabled={state.weekResolutionPhase === 'resolving' || (!state.plannedWeekSlots.some(Boolean) && state.weekResolutionResults.length === 0)}
+          >
+            Clear Plan
+          </button>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => dispatch({ type: 'COMMIT_WEEK_PLAN' })}
+            disabled={!weekPlanReady || state.weekPlanCommitted}
+            title={weekPlanReady ? 'Run the planned week.' : 'Assign all open days first.'}
+          >
+            Run This Week
+          </button>
+        </div>
       </div>
     </section>
   )

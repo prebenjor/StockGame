@@ -9,6 +9,26 @@ function addIf<T>(items: T[], condition: unknown, value: T) {
   if (condition) items.push(value)
 }
 
+export function createLeaveOpenWeekAction(slotIndex: number): PlannedWeekAction {
+  return {
+    id: `leave-open-${slotIndex + 1}`,
+    kind: 'recovery',
+    label: 'Leave open',
+    detail: 'Keep this day unscheduled and let the time breathe.',
+    actionCost: 1,
+    preview: 'No direct gain, but you keep the week lighter.',
+    slotState: 'leave-open',
+  }
+}
+
+export function isWeekPlanReady(state: Pick<GameState, 'plannedWeekSlots'>) {
+  return state.plannedWeekSlots.every((slot) => slot !== null)
+}
+
+export function getAssignedWeekSlotCount(state: Pick<GameState, 'plannedWeekSlots'>) {
+  return state.plannedWeekSlots.filter((slot) => slot !== null).length
+}
+
 const FOLLOW_UP_EVENT_IDS = new Set([
   'manager-nod',
   'weekend-lane-opens',

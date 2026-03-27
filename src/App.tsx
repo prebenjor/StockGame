@@ -20,7 +20,7 @@ import { PERSONAL_ACTIONS } from './features/personal/data'
 import { PropertyPanel } from './features/property/PropertyPanel'
 import { formatCalendarLabel, getCalendarYear, getMonthInYear } from './game/core/calendar'
 import { money } from './game/core/format'
-import { getFeaturedWeekSituations } from './game/core/planning'
+import { getAssignedWeekSlotCount, getFeaturedWeekSituations, isWeekPlanReady } from './game/core/planning'
 import { getCurrentJob, getTips, getWeeklyRunway } from './game/core/selectors'
 import { gameReducer, loadState } from './game/core/reducer'
 import { persistState } from './game/core/storage'
@@ -117,9 +117,7 @@ function App() {
 
   const currentJob = getCurrentJob(state)
   const activeTheme = SECTION_THEMES[activeView]
-  const weeklyRunway = getWeeklyRunway(state)
   const calendarLabel = formatCalendarLabel(state.month, state.weekOfMonth)
-
   const selectViewById = useCallback((viewId: ViewId) => {
     setActiveView(viewId)
     if (!desktopRailVisible) {
@@ -138,8 +136,41 @@ function App() {
 
   const advanceWeek = () => {
     if (stateRef.current.weekPlanCommitted && stateRef.current.weekResolutionPhase === 'resolving') return
-    startTransition(() => dispatch({ type: 'END_WEEK' }))
+    if (!isWeekPlanReady(stateRef.current)) return
+    startTransition(() => dispatch({ type: 'COMMIT_WEEK_PLAN' }))
   }
+
+  const renderSectionNav = (className: string) => (
+    <nav className={className} aria-label="Game sections" role="tablist">
+      {VIEWS.map((view, index) => (
+        <button
+          key={view.id}
+          ref={(element) => {
+            viewRefs.current[index] = element
+          }}
+          className={`top-nav-item ${activeView === view.id ? 'active' : ''}`}
+          onClick={() => selectViewById(view.id)}
+          onKeyDown={(event) => handleViewKeyDown(event, index)}
+          type="button"
+          role="tab"
+          id={`tab-${view.id}`}
+          aria-selected={activeView === view.id}
+          aria-controls={`panel-${view.id}`}
+          tabIndex={activeView === view.id ? 0 : -1}
+          style={
+            {
+              '--chip-accent': view.accent,
+              '--chip-accent-soft': view.accentSoft,
+              '--chip-glow': view.glow,
+            } as React.CSSProperties
+          }
+        >
+          <span>{view.kicker}</span>
+          <strong>{view.label}</strong>
+        </button>
+      ))}
+    </nav>
+  )
 
   const handleViewKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
@@ -245,10 +276,8 @@ function App() {
 
         if (latestView === 'overview') {
           if (key === 'a') {
-            if (!latestState.weekPlanCommitted && latestState.plannedWeekSlots.some(Boolean)) {
+            if (!latestState.weekPlanCommitted && isWeekPlanReady(latestState)) {
               dispatch({ type: 'COMMIT_WEEK_PLAN' })
-            } else if (!latestState.weekPlanCommitted) {
-              dispatch({ type: 'END_WEEK' })
             }
           }
 
@@ -375,6 +404,8 @@ function App() {
     window.render_game_to_text = () => {
       const latestState = stateRef.current
       const latestActiveView = activeViewRef.current
+      const latestAssignedWeekSlots = getAssignedWeekSlotCount(latestState)
+      const latestWeekPlanReady = isWeekPlanReady(latestState)
       const activeSection = document.querySelector<HTMLElement>('#main-content [data-ui-section]')
       const toolbarSummary = activeSection?.dataset.toolbarSummary
       const selectedSymbol = activeSection?.dataset.selectedSymbol
@@ -390,7 +421,7 @@ function App() {
       const creditUtilization = getCreditUtilization(latestState)
       const featuredSituations = getFeaturedWeekSituations(latestState)
       const snapshot = {
-        coordinateSystem: 'No spatial coordinates. Desktop uses a fixed left rail and a fluid content pane. Mobile uses a compact top bar plus a drawer rail.',
+        coordinateSystem: 'No spatial coordinates. Desktop uses a compact side HUD, a horizontal section nav above content, and a fluid content pane. Mobile uses a compact top bar plus a drawer HUD.',
         mode: 'management-sim',
         activeView: latestActiveView,
         activeViewIndex: VIEWS.findIndex((view) => view.id === latestActiveView),
@@ -426,9 +457,11 @@ function App() {
                 id: slot.id,
                 label: slot.label,
                 kind: slot.kind,
+                slotState: slot.slotState ?? 'planned',
               }
             : null,
         ),
+        weekPlanReady: isWeekPlanReady(latestState),
         weekPlanCommitted: latestState.weekPlanCommitted,
         weekResolutionState: {
           phase: latestState.weekResolutionPhase,
@@ -515,7 +548,10 @@ function App() {
         ui: {
           toolbarSummary: toolbarSummary ?? null,
           desktopRailVisible,
+          desktopTopNavVisible: desktopRailVisible,
           mobileDrawerOpen: mobileRailOpen,
+          assignedWeekSlots: latestAssignedWeekSlots,
+          weekPlanReadyToRun: latestWeekPlanReady,
         },
         recentLog: latestState.log.slice(0, 3).map((entry) => ({
           title: entry.title,
@@ -594,6 +630,7 @@ function App() {
             viewRefs={viewRefs}
             onSelectView={(viewId) => selectViewById(viewId as ViewId)}
             onViewKeyDown={handleViewKeyDown}
+            showNavigation={!desktopRailVisible}
             mobileDrawerOpen={mobileRailOpen}
             onCloseDrawer={() => setMobileRailOpen(false)}
           />
@@ -610,10 +647,12 @@ function App() {
             </div>
             <div className="mobile-topbar-stats">
               <span>Cash {money(state.cash)}</span>
-              <span>Runway {money(weeklyRunway)}</span>
+              <span>Health {state.health}</span>
               <span>Open {state.actionPoints}</span>
             </div>
           </header>
+
+          {desktopRailVisible ? renderSectionNav('desktop-top-nav') : null}
 
           <main
             className="content-shell"

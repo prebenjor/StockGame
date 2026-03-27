@@ -7,7 +7,7 @@ import { PERSONAL_ACTION_MAP } from '../../features/personal/data'
 import { PROPERTIES, PROPERTY_MAP, TENANT_PROFILES, TENANT_PROFILE_MAP } from '../../features/property/data'
 import { CONTACTS, DISTRICTS, DISTRICT_MAP, FOOD_SURVIVAL_EVENTS, HOUSING_SURVIVAL_EVENTS, LIFE_EVENTS, MONTHLY_EVENTS, RIVALS, SHARED_HOUSING_EVENTS, STARTER_BREAK_EVENTS, TRANSPORT_SURVIVAL_EVENTS } from '../../features/world/data'
 import { money } from './format'
-import { getWeekEventCards, getWeekFollowUpEventCards, mergeWeekEventCards, sortWeekEventCards } from './planning'
+import { getWeekEventCards, getWeekFollowUpEventCards, isWeekPlanReady, mergeWeekEventCards, sortWeekEventCards } from './planning'
 import { hydrateState } from './storage'
 import type { ContactState, Course, DebtAccount, GameAction, GameState, LifeEvent, MarketNews, MonthlySnapshot, Opportunity, Tone, WeekEventOption, WeekResolutionResult } from './types'
 import { canBuyBusiness, canBuyProperty, canOpenCreditCard, canRunGig, canTakeBusinessLoan, canTakeJob, canTakeSideJob, clamp, getBondValue, getBondYield, getBusinessDebtBalance, getBusinessMonthlyProfit, getBusinessValue, getComplianceRisk, getCreditCardAccount, getCreditUtilization, getDebtTotal, getInterestRate, getLifestyleConditionShift, getLifestyleSwitchCost, getLivingCost, getLockedReason, getMonthlyTaxEstimate, getNetWorth, getPassiveIncomePreview, getPropertyAskingPrice, getPropertyRent, getPropertyUpkeep, getPropertyValue, getRenovationBoost, getRenovationCost, getSavingsRate, getTradingFee, hasStableHousing, hasUpgrade, randomBetween, randomInt, randomItem, roundPrice, toWeeklyAmount, WEEKS_PER_MONTH } from './utils'
@@ -122,6 +122,22 @@ function applyPlannedWeekAction(state: GameState, slotIndex: number) {
         label: `Open day ${slotIndex + 1}`,
         detail: 'You left this part of the week open and let the time breathe.',
         deltas: ['No special action'],
+        tone: 'neutral',
+      },
+    )
+  }
+
+  if (plannedAction.slotState === 'leave-open') {
+    return pushWeekResolutionResult(
+      {
+        ...state,
+        weekResolutionCursor: slotIndex + 1,
+      },
+      {
+        id: `slot-${state.week}-${slotIndex}-leave-open`,
+        label: `Open day ${slotIndex + 1}`,
+        detail: 'You left this day open instead of forcing something into it.',
+        deltas: ['Held open'],
         tone: 'neutral',
       },
     )
@@ -941,7 +957,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
   if (action.type === 'COMMIT_WEEK_PLAN') {
     if (state.weekPlanCommitted) return state
-    if (!state.plannedWeekSlots.some(Boolean)) return state
+    if (!isWeekPlanReady(state)) return state
     return {
       ...state,
       weekPlanCommitted: true,

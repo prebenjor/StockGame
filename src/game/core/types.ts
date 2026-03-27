@@ -284,6 +284,7 @@ export type PlannedWeekAction = {
   actionCost: number
   preview?: string
   oncePerWeek?: boolean
+  slotState?: 'planned' | 'leave-open'
 }
 
 export type WeekEventOption = {

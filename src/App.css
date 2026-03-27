@@ -2384,6 +2384,645 @@ button:focus-visible,
   }
 }
 
+/* Week hub UI refresh: top nav + side HUD */
+
+:root {
+  --color-work: #4c9141;
+  --color-recovery: #d4882b;
+  --color-growth: #8b6b2f;
+  --color-money: #2a7d75;
+  --color-danger: #c0392b;
+  --color-neutral: #7f8c8d;
+  --text-xs: 0.65rem;
+  --text-sm: 0.8rem;
+  --text-base: 0.95rem;
+  --text-lg: 1.15rem;
+  --text-xl: 1.5rem;
+}
+
+.app-layout {
+  grid-template-columns: 292px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.app-main {
+  gap: 12px;
+}
+
+.game-rail-shell {
+  max-height: none;
+  overflow: visible;
+  gap: 12px;
+  padding: 16px;
+}
+
+.rail-topline {
+  margin-bottom: 2px;
+}
+
+.rail-topline h1 {
+  margin: 8px 0 0;
+  font-size: clamp(1.2rem, 1rem + 0.5vw, 1.6rem);
+}
+
+.rail-status-hud {
+  gap: 10px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(250, 243, 235, 0.96), rgba(255, 252, 247, 0.86));
+}
+
+.hud-money-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.hud-stat {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(120, 79, 41, 0.08);
+}
+
+.hud-stat span,
+.hud-meter-topline span,
+.hud-open-row span,
+.mini-stat span,
+.top-nav-item span,
+.planner-group-count,
+.planner-tradeoff-tag,
+.slot-kind-badge,
+.planner-option-assigned,
+.week-run-summary span {
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #694d33;
+}
+
+.hud-stat strong,
+.hud-open-row strong,
+.mini-stat strong {
+  font-size: 1.2rem;
+  line-height: 1;
+  color: #24150c;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.hud-condition-row {
+  display: grid;
+  gap: 8px;
+}
+
+.hud-meter {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(105, 141, 97, 0.12);
+}
+
+.hud-meter.stress {
+  border-color: rgba(183, 96, 70, 0.14);
+  background: rgba(255, 247, 244, 0.86);
+}
+
+.hud-meter-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.hud-meter-topline strong {
+  color: #24150c;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.hud-meter-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(205, 218, 210, 0.6);
+  overflow: hidden;
+}
+
+.hud-meter.stress .hud-meter-bar {
+  background: rgba(226, 202, 193, 0.68);
+}
+
+.hud-meter-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7bc77d, #e9c65a, #d36b4f);
+}
+
+.hud-meter.stress .hud-meter-bar span {
+  background: linear-gradient(90deg, #d36b4f, #e9c65a, #7bc77d);
+}
+
+.hud-open-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  padding-top: 2px;
+}
+
+.hud-open-row strong.attention {
+  color: #b45f11;
+}
+
+.rail-subline {
+  font-size: var(--text-sm);
+  color: #6a4a2f;
+}
+
+.rail-focus {
+  gap: 8px;
+}
+
+.rail-secondary-stats summary {
+  list-style: none;
+  cursor: pointer;
+  color: #5b4330;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.rail-secondary-stats summary::-webkit-details-marker {
+  display: none;
+}
+
+.rail-secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.mini-stat {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(120, 79, 41, 0.08);
+}
+
+.rail-actions-bottom {
+  position: static;
+}
+
+.desktop-top-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
+  gap: 10px;
+}
+
+.top-nav-item {
+  appearance: none;
+  border: 1px solid rgba(95, 63, 34, 0.14);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--chip-accent-soft, rgba(255, 214, 150, 0.68)) 66%, white), rgba(255, 252, 247, 0.92)),
+    rgba(255, 255, 255, 0.9);
+  border-radius: 16px;
+  padding: 10px 12px 11px;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.top-nav-item::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--chip-accent) 84%, white), var(--chip-accent));
+  opacity: 0.8;
+}
+
+.top-nav-item strong {
+  display: block;
+  margin-top: 6px;
+  font-size: var(--text-base);
+  color: color-mix(in srgb, var(--chip-accent) 34%, #24150c);
+}
+
+.top-nav-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(89, 54, 18, 0.08);
+}
+
+.top-nav-item.active {
+  border-color: color-mix(in srgb, var(--chip-accent) 40%, rgba(95, 63, 34, 0.12));
+  box-shadow:
+    0 14px 30px rgba(89, 54, 18, 0.1),
+    inset 0 0 0 1px color-mix(in srgb, var(--chip-accent) 18%, transparent);
+}
+
+.content-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.week-hub-panel {
+  gap: 16px;
+  padding-bottom: 104px;
+}
+
+.hub-card.story {
+  gap: 10px;
+  padding: 16px 18px;
+}
+
+.hub-card.story .tag-row {
+  gap: 6px;
+}
+
+.week-slot-card {
+  position: relative;
+  min-height: 186px;
+  align-content: start;
+}
+
+.week-slot-card.empty {
+  border: 2px dashed rgba(184, 141, 98, 0.55);
+  background: rgba(255, 252, 247, 0.72);
+}
+
+.week-slot-card.filled {
+  border-left-width: 5px;
+}
+
+.week-slot-card.slot-kind-work {
+  border-left-color: var(--color-work);
+}
+
+.week-slot-card.slot-kind-recovery,
+.week-slot-card.leave-open {
+  border-left-color: var(--color-recovery);
+}
+
+.week-slot-card.slot-kind-growth {
+  border-left-color: var(--color-growth);
+}
+
+.week-slot-card.slot-kind-money {
+  border-left-color: var(--color-money);
+}
+
+.week-slot-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.slot-empty-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px dashed rgba(167, 129, 91, 0.6);
+  color: #7e5a37;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 auto 2px;
+}
+
+.week-slot-card.empty .week-slot-hitbox {
+  place-items: center;
+  text-align: center;
+  min-height: 108px;
+}
+
+.slot-clear-button {
+  appearance: none;
+  border: none;
+  background: rgba(255, 255, 255, 0.88);
+  color: #6a4a2f;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid rgba(120, 79, 41, 0.16);
+}
+
+.slot-leave-open {
+  justify-self: center;
+  min-width: 0;
+}
+
+.slot-kind-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(231, 220, 208, 0.86);
+  color: #5b4330;
+}
+
+.slot-kind-badge.work {
+  background: color-mix(in srgb, var(--color-work) 14%, white);
+  color: var(--color-work);
+}
+
+.slot-kind-badge.recovery {
+  background: color-mix(in srgb, var(--color-recovery) 18%, white);
+  color: #9c5c11;
+}
+
+.slot-kind-badge.growth {
+  background: color-mix(in srgb, var(--color-growth) 18%, white);
+  color: #6e531f;
+}
+
+.slot-kind-badge.money {
+  background: color-mix(in srgb, var(--color-money) 18%, white);
+  color: #225e58;
+}
+
+.slot-kind-badge.neutral {
+  background: rgba(236, 229, 220, 0.9);
+  color: #6a4a2f;
+}
+
+.planner-group {
+  gap: 10px;
+}
+
+.planner-group-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 9px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(120, 79, 41, 0.12);
+  background: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+}
+
+.planner-group-work .planner-group-header {
+  background: color-mix(in srgb, var(--color-work) 6%, white);
+}
+
+.planner-group-recovery .planner-group-header {
+  background: color-mix(in srgb, var(--color-recovery) 8%, white);
+}
+
+.planner-group-growth .planner-group-header {
+  background: color-mix(in srgb, var(--color-growth) 8%, white);
+}
+
+.planner-group-money .planner-group-header {
+  background: color-mix(in srgb, var(--color-money) 8%, white);
+}
+
+.planner-group-title,
+.planner-group-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.planner-group-title strong {
+  font-size: var(--text-lg);
+  color: #24150c;
+}
+
+.planner-group-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 800;
+  background: rgba(229, 220, 210, 0.9);
+  color: #5b4330;
+}
+
+.planner-group-icon.work {
+  background: color-mix(in srgb, var(--color-work) 14%, white);
+  color: var(--color-work);
+}
+
+.planner-group-icon.recovery {
+  background: color-mix(in srgb, var(--color-recovery) 18%, white);
+  color: #9c5c11;
+}
+
+.planner-group-icon.growth {
+  background: color-mix(in srgb, var(--color-growth) 18%, white);
+  color: #6e531f;
+}
+
+.planner-group-icon.money {
+  background: color-mix(in srgb, var(--color-money) 18%, white);
+  color: #225e58;
+}
+
+.planner-group-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.planner-group-chevron {
+  color: #6f5136;
+  font-weight: 700;
+}
+
+.planner-option-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.planner-option-card {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  background: rgba(255, 252, 247, 0.8);
+}
+
+.planner-option-card.assigned {
+  opacity: 0.72;
+}
+
+.planner-option-hitbox {
+  appearance: none;
+  border: none;
+  background: transparent;
+  display: grid;
+  gap: 10px;
+  text-align: left;
+  padding: 14px 16px 10px;
+  cursor: pointer;
+}
+
+.planner-option-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.planner-option-assigned {
+  color: #1f7a49;
+}
+
+.planner-tradeoff-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.planner-tradeoff-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(236, 229, 220, 0.9);
+}
+
+.planner-expand-toggle {
+  appearance: none;
+  border: none;
+  border-top: 1px solid rgba(120, 79, 41, 0.08);
+  background: rgba(255, 255, 255, 0.76);
+  color: #5f452f;
+  font-weight: 700;
+  padding: 10px 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.planner-option-detail {
+  display: grid;
+  gap: 6px;
+  padding: 0 16px 14px;
+}
+
+.planner-option-detail p,
+.planner-option-detail small {
+  margin: 0;
+  color: #513d2f;
+  line-height: 1.45;
+}
+
+.compact-note.route-context {
+  padding: 12px 14px;
+}
+
+.week-run-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 8;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(120, 79, 41, 0.14);
+  background: linear-gradient(180deg, rgba(255, 247, 237, 0.98), rgba(255, 252, 247, 0.95));
+  box-shadow: 0 -10px 28px rgba(89, 54, 18, 0.08);
+}
+
+.week-run-summary {
+  display: grid;
+  gap: 4px;
+}
+
+.week-run-summary strong {
+  color: #24150c;
+  font-size: var(--text-lg);
+}
+
+.week-run-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.week-run-actions .primary-button,
+.week-run-actions .secondary-button {
+  min-width: 148px;
+}
+
+@media (max-width: 1180px) {
+  .app-layout {
+    grid-template-columns: 276px minmax(0, 1fr);
+  }
+
+  .desktop-top-nav {
+    grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .desktop-top-nav {
+    display: none;
+  }
+
+  .game-rail-shell {
+    height: calc(100svh - 20px);
+    overflow: auto;
+  }
+
+  .rail-secondary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .week-run-bar {
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .week-run-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .week-run-actions .primary-button,
+  .week-run-actions .secondary-button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .hud-money-grid,
+  .rail-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hud-condition-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

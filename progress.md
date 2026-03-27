@@ -338,3 +338,38 @@ TODO
     - `output/web-game-nav-calendar-drama/route-week.png` plus `route-week-state.json` confirm a route-leaning planned week now resolves into 4 queued situation cards but only surfaces 2 featured ones (`major` work, `side` market, `hiddenCount: 2`).
     - `output/web-game-nav-calendar-drama/year-rollover.png` plus `year-rollover-state.json` confirm the calendar math at month rollover with `timeline.calendarLabel: "Year 2 / Month 1 / W1"`.
   - No `errors-*.json` files were generated during the shared-client validation run.
+- Reworked the shell from `nav in rail` to `top nav + side HUD` on desktop while keeping the mobile drawer/top-bar pattern.
+- Desktop now uses:
+  - a compact left HUD for calendar, money, condition, open days, role, and actions
+  - a horizontal top navigation strip above the active content pane
+  - no internal desktop rail scroll for core status
+- Mobile still uses the drawer, but the nav now appears near the top of the drawer instead of being buried under lower status blocks.
+- Rebuilt the week planner UI around clearer interaction states without changing the underlying simulation:
+  - empty slots now use a dashed interactive state with a `+` affordance and explicit `Assign an activity` copy
+  - each slot can now be explicitly set to `Leave open`, which is stored as a real `slotState` instead of being treated like an implicit empty slot
+  - clicking a planner option assigns it to the selected slot when available, otherwise the first empty slot
+  - assigned slots now show category badges, clearer filled-state styling, and a direct clear button
+- Refactored planner options to be scan-first:
+  - default state shows category badge, title, and compact tradeoff tags
+  - details are hidden behind a small `Details` toggle instead of always rendering a paragraph wall
+  - assigned options now show `Assigned to Day X`
+  - planner groups (`Work`, `Recovery`, `Growth`, `Money`) now use tinted header bars and can be collapsed
+- Added a sticky main-pane action bar for week execution:
+  - shows `X of 3 days assigned`
+  - `Run This Week` stays disabled until all 3 days are assigned or explicitly marked `Leave open`
+  - sidebar `Advance Week` now follows the same gating and commits the plan instead of bypassing it
+- Updated exported browser state:
+  - `coordinateSystem` now reflects the top-nav + side-HUD shell
+  - `weekPlan` entries now export `slotState`
+  - `ui.assignedWeekSlots` and `ui.weekPlanReadyToRun` are now derived from the latest live state
+- Re-verified after the week-hub UI refresh with `npm run lint`, `npx tsc -b`, and `npm run build` (build still required escalation because Vite config loading hits sandbox `spawn EPERM`).
+- Browser validation for the week-hub refresh:
+  - Shared Playwright client:
+    - `output/web-game-week-hub-refresh-idle/state-0.json` confirms the new shell export with `desktopTopNavVisible: true`, `assignedWeekSlots: 0`, and `weekPlanReadyToRun: false`.
+    - `output/web-game-week-hub-refresh-idle/shot-0.png` confirms the desktop top-nav + compact side HUD layout renders in-browser.
+  - Direct Playwright captures:
+    - `output/web-game-week-hub-refresh/desktop-overview.png` plus `desktop-overview-state.json` show the new top nav, compact HUD, shorter advisory box, and interactive empty week slots.
+    - `output/web-game-week-hub-refresh/desktop-planner.png` plus `desktop-planner-state.json` confirm click-to-assign works and the sticky bottom run bar updates to `1/3 days assigned`.
+    - `output/web-game-week-hub-refresh/mobile-topbar.png` plus `mobile-topbar-state.json` confirm the compact mobile top bar still exposes the essentials.
+    - `output/web-game-week-hub-refresh/mobile-drawer.png` plus `mobile-drawer-state.json` confirm the drawer still works with nav near the top and `mobileDrawerOpen: true`.
+  - No `errors-*.json` files were generated during the shared-client validation run.
