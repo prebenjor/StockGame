@@ -395,3 +395,28 @@ TODO
     - `output/web-game-tactical-shell/mobile-overview.png` plus `mobile-overview-state.json` confirm the compact mobile top bar and single-column overview stack.
     - `output/web-game-tactical-shell/mobile-drawer.png` plus `mobile-drawer-state.json` confirm the drawer nav works under the new shell.
   - No `errors-*.json` files were generated during the shared-client validation run.
+- Shifted the app from the warm cream/orange shell into the requested colder `teal / slate` visual system while keeping the tactical-shell structure.
+- Added the requested font pairing in [App.css](D:/Coding projects/StockGame/src/App.css) via Google Fonts import:
+  - `Manrope` for headings and primary labels
+  - `Inter` for body, metadata, buttons, and dense UI text
+- Reworked the core visual tokens around:
+  - slate surfaces
+  - teal primary actions / active states
+  - amber warning surfaces
+  - cooler outlines and softer paper-stack shadows
+- Refined the nav and overview UI to better match the colder design direction:
+  - left-rail nav now has marker badges, cooler hover states, and cleaner active treatment
+  - top resource hub now uses cooler cards and teal progress bars
+  - alert banner now uses a stronger amber warning treatment plus a visible alert marker
+  - planner cards, route cards, situation cards, and the sticky week bar now use more consistent hover/lift behavior
+- Re-verified after the teal/slate pass with `npm run lint`, `npx tsc -b`, and `npm run build`.
+- Browser validation for the teal/slate pass:
+  - Shared Playwright client:
+    - `output/web-game-teal-slate-idle/state-0.json` confirms the shell/export remained stable after the visual-system swap.
+    - `output/web-game-teal-slate-idle/shot-0.png` confirms the colder resource hub and nav treatment on the default overview.
+  - Direct Playwright captures:
+    - `output/web-game-teal-slate/desktop-overview.png` plus `desktop-overview-state.json` confirm the overview now reads in the colder teal/slate system.
+    - `output/web-game-teal-slate/desktop-market.png` plus `desktop-market-state.json` confirm the market panel still renders correctly with the new shell and visual language.
+    - `output/web-game-teal-slate/mobile-overview.png` plus `mobile-overview-state.json` confirm the mobile layout still works under the new palette and typography.
+    - `output/web-game-teal-slate/mobile-drawer.png` plus `mobile-drawer-state.json` confirm the drawer/nav styling also migrated cleanly.
+  - No `errors-*.json` files were generated during the shared-client validation run.

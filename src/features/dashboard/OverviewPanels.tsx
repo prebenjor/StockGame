@@ -322,7 +322,12 @@ export function SidePanel({ state, dispatch, onNavigate }: SideProps) {
         <div className="week-hub-main-column">
           <article className={`hub-card story ${pressure.tone}`}>
             <div className="card-topline">
-              <h3>{pressure.title}</h3>
+              <div className="story-title-wrap">
+                <span className="story-alert-icon" aria-hidden="true">
+                  !
+                </span>
+                <h3>{pressure.title}</h3>
+              </div>
               <span>{state.actionPoints} open days</span>
             </div>
             <p>{pressure.detail}</p>

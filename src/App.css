@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap');
+
 .app-shell {
   width: min(100%, 1880px);
   margin: 0 auto;
@@ -3355,6 +3357,417 @@ button:focus-visible,
   .resource-hub-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+}
+
+/* Tactical Horizon visual system */
+
+:root {
+  --th-surface: #f4f6f7;
+  --th-surface-low: #edf1f2;
+  --th-surface-high: #e2e8ea;
+  --th-surface-top: #ffffff;
+  --th-text: #191c1d;
+  --th-text-muted: #556167;
+  --th-outline: rgba(88, 101, 108, 0.18);
+  --th-outline-strong: rgba(88, 101, 108, 0.28);
+  --th-primary: #007b83;
+  --th-primary-deep: #005e76;
+  --th-primary-soft: rgba(0, 123, 131, 0.14);
+  --th-amber: #f7e0a6;
+  --th-amber-border: rgba(161, 104, 23, 0.28);
+  --th-danger: #c45e4f;
+  --th-shadow:
+    0 4px 20px rgba(25, 28, 29, 0.04),
+    0 12px 40px rgba(25, 28, 29, 0.08);
+}
+
+body,
+.app-shell,
+button,
+input,
+select,
+textarea {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  color: var(--th-text);
+}
+
+.app-shell {
+  background:
+    radial-gradient(circle at 12% 10%, rgba(0, 123, 131, 0.08), transparent 28%),
+    radial-gradient(circle at 88% 18%, rgba(0, 94, 118, 0.05), transparent 32%),
+    linear-gradient(180deg, #f6f8f9 0%, #eef2f3 100%);
+}
+
+.panel,
+.resource-hub,
+.side-nav-shell,
+.hub-card,
+.section-panel,
+.section-toolbar,
+.section-tab,
+.planner-group-header,
+.planner-option-card,
+.week-slot-card,
+.event-choice-card,
+.route-card,
+.opportunity-preview,
+.log-entry,
+.compact-note,
+.tip-card,
+.resource-chip,
+.resource-meter,
+.toolbar-search,
+.toolbar-select,
+.toolbar-chip,
+.rail-card,
+.lifestyle-option,
+.banking-row {
+  border-color: var(--th-outline);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 251, 0.92));
+  box-shadow: none;
+}
+
+.panel,
+.resource-hub,
+.side-nav-shell,
+.section-panel,
+.section-toolbar,
+.planner-option-card,
+.week-slot-card,
+.event-choice-card,
+.route-card,
+.opportunity-preview,
+.log-entry,
+.compact-note,
+.tip-card,
+.resource-chip,
+.resource-meter,
+.lifestyle-option,
+.banking-row {
+  box-shadow: var(--th-shadow);
+}
+
+.panel-kicker,
+.resource-hub-role span,
+.resource-chip span,
+.resource-meter-topline span,
+.side-nav-item span,
+.side-nav-marker,
+.planner-group-count,
+.slot-kind-badge,
+.planner-option-assigned,
+.planner-tradeoff-tag,
+.compact-note,
+.log-topline span,
+.toolbar-summary,
+.toolbar-chip span,
+.toolbar-select span {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--th-text-muted);
+}
+
+.panel-header h2,
+.resource-hub-headline h2,
+.resource-hub-role strong,
+.planner-group-title strong,
+.card-topline h3,
+.route-card strong,
+.side-nav-topline h1,
+.side-nav-item strong {
+  font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+  color: var(--th-text);
+}
+
+.panel-header p,
+.card p,
+.log-entry p,
+.tip-card,
+.compact-note,
+.hero-text {
+  color: #425057;
+}
+
+.side-nav-shell {
+  background: linear-gradient(180deg, rgba(231, 236, 239, 0.98), rgba(243, 246, 247, 0.94));
+}
+
+.side-nav-item {
+  min-height: 64px;
+  padding: 12px 14px 12px 40px;
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(91, 104, 111, 0.15);
+}
+
+.side-nav-item:hover {
+  background: rgba(226, 232, 236, 0.78);
+  border-color: rgba(91, 104, 111, 0.22);
+  box-shadow: 0 8px 20px rgba(25, 28, 29, 0.06);
+}
+
+.side-nav-item.active {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(243, 249, 250, 0.98));
+  border-color: rgba(0, 123, 131, 0.28);
+}
+
+.side-nav-item::before {
+  width: 5px;
+  background: linear-gradient(180deg, var(--th-primary), #2aa0a8);
+  opacity: 1;
+}
+
+.side-nav-marker {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: rgba(0, 123, 131, 0.12);
+  color: var(--th-primary-deep);
+  font-weight: 700;
+}
+
+.resource-hub {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 246, 0.95));
+  border-color: rgba(91, 104, 111, 0.14);
+}
+
+.resource-chip,
+.resource-meter {
+  background: linear-gradient(180deg, #ffffff, #f3f6f7);
+}
+
+.resource-meter-bar,
+.hud-meter-bar,
+.condition-bar {
+  background: rgba(207, 215, 218, 0.7);
+}
+
+.resource-meter-bar span,
+.hud-meter-bar span,
+.condition-bar span {
+  background: linear-gradient(90deg, var(--th-primary), #42a0a6);
+}
+
+.resource-meter.stress .resource-meter-bar span,
+.hud-meter.stress .hud-meter-bar span,
+.condition-row.stress .condition-bar span {
+  background: linear-gradient(90deg, #c45e4f, #e5ad66);
+}
+
+.primary-button,
+.week-run-actions .primary-button,
+.resource-hub-actions .primary-button {
+  background: linear-gradient(135deg, var(--th-primary-deep), var(--th-primary));
+  color: #f9fcfc;
+  box-shadow:
+    0 12px 28px rgba(0, 94, 118, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.secondary-button,
+.mini-button.ghost,
+.week-run-actions .secondary-button {
+  background: rgba(255, 255, 255, 0.68);
+  color: var(--th-text);
+  border: 1px solid rgba(91, 104, 111, 0.18);
+}
+
+.secondary-button:hover:not(:disabled),
+.mini-button.ghost:hover:not(:disabled) {
+  border-color: rgba(91, 104, 111, 0.32);
+  background: rgba(233, 238, 240, 0.88);
+}
+
+.hub-card.story.negative {
+  background: linear-gradient(180deg, rgba(253, 240, 209, 0.95), rgba(255, 249, 236, 0.92));
+  border-color: var(--th-amber-border);
+}
+
+.hub-card.story.positive {
+  background: linear-gradient(180deg, rgba(232, 246, 246, 0.96), rgba(247, 251, 251, 0.94));
+  border-color: rgba(0, 123, 131, 0.18);
+}
+
+.story-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.story-alert-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(177, 113, 21, 0.16);
+  color: #8b560d;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.week-slot-card.empty {
+  background: rgba(248, 250, 251, 0.82);
+  border: 2px dashed rgba(108, 124, 132, 0.42);
+}
+
+.week-slot-card.selected {
+  border-color: rgba(0, 123, 131, 0.34);
+  box-shadow:
+    0 14px 34px rgba(25, 28, 29, 0.06),
+    0 0 0 1px rgba(0, 123, 131, 0.12);
+}
+
+.week-slot-card.filled {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 249, 0.94));
+}
+
+.week-slot-card.slot-kind-work,
+.slot-kind-badge.work,
+.planner-group-icon.work {
+  border-left-color: var(--th-primary);
+}
+
+.slot-kind-badge.work,
+.planner-group-icon.work {
+  background: rgba(0, 123, 131, 0.14);
+  color: var(--th-primary-deep);
+}
+
+.slot-kind-badge.recovery,
+.planner-group-icon.recovery {
+  background: rgba(212, 136, 43, 0.14);
+  color: #93601a;
+}
+
+.slot-kind-badge.growth,
+.planner-group-icon.growth {
+  background: rgba(117, 101, 62, 0.14);
+  color: #5e512f;
+}
+
+.slot-kind-badge.money,
+.planner-group-icon.money {
+  background: rgba(58, 116, 126, 0.14);
+  color: #285f66;
+}
+
+.planner-group-header {
+  border-color: rgba(91, 104, 111, 0.16);
+  box-shadow: none;
+}
+
+.planner-group-work .planner-group-header {
+  background: rgba(0, 123, 131, 0.06);
+}
+
+.planner-group-recovery .planner-group-header {
+  background: rgba(212, 136, 43, 0.08);
+}
+
+.planner-group-growth .planner-group-header {
+  background: rgba(117, 101, 62, 0.08);
+}
+
+.planner-group-money .planner-group-header {
+  background: rgba(58, 116, 126, 0.08);
+}
+
+.planner-option-card,
+.event-choice-card,
+.route-card,
+.opportunity-preview,
+.section-tab {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.planner-option-card:hover,
+.event-choice-card:hover,
+.route-card:hover,
+.opportunity-preview:hover,
+.section-tab:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 28px rgba(25, 28, 29, 0.07),
+    0 0 0 1px rgba(0, 123, 131, 0.08);
+}
+
+.planner-tradeoff-tag {
+  background: rgba(231, 236, 238, 0.9);
+  color: #47545a;
+}
+
+.week-run-bar {
+  background: linear-gradient(180deg, rgba(246, 249, 250, 0.98), rgba(237, 242, 244, 0.95));
+  border-color: rgba(91, 104, 111, 0.16);
+  box-shadow:
+    0 -6px 22px rgba(25, 28, 29, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+}
+
+.week-run-summary strong {
+  font-family: 'Manrope', 'Inter', system-ui, sans-serif;
+}
+
+.event-choice-card.major {
+  border-color: rgba(0, 123, 131, 0.22);
+  box-shadow:
+    0 16px 34px rgba(25, 28, 29, 0.08),
+    0 0 0 1px rgba(0, 123, 131, 0.1);
+}
+
+.event-choice-card.side {
+  background: linear-gradient(180deg, rgba(249, 251, 252, 0.96), rgba(242, 246, 247, 0.92));
+}
+
+.event-choice-card.bad {
+  background: linear-gradient(180deg, rgba(255, 244, 239, 0.96), rgba(250, 246, 244, 0.92));
+}
+
+.event-choice-card.good {
+  background: linear-gradient(180deg, rgba(241, 250, 250, 0.96), rgba(246, 250, 250, 0.92));
+}
+
+.mobile-topbar {
+  background: linear-gradient(180deg, rgba(248, 250, 251, 0.98), rgba(239, 243, 245, 0.94));
+  border-color: rgba(91, 104, 111, 0.16);
+  box-shadow: var(--th-shadow);
+}
+
+.mobile-menu-button {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(91, 104, 111, 0.16);
+  color: var(--th-text);
+}
+
+.section-panel {
+  background: linear-gradient(180deg, rgba(244, 247, 248, 0.98), rgba(239, 243, 245, 0.94));
+}
+
+.section-tab.active {
+  border-color: rgba(0, 123, 131, 0.26);
+  box-shadow:
+    0 12px 28px rgba(25, 28, 29, 0.06),
+    inset 0 0 0 1px rgba(0, 123, 131, 0.12);
+}
+
+.toolbar-search,
+.toolbar-select,
+.toolbar-chip {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+@media (max-width: 900px) {
+  .side-nav-item {
+    min-height: 60px;
   }
 }
 

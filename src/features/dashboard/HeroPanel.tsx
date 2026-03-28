@@ -17,6 +17,20 @@ type Props = {
   onCloseDrawer: () => void
 }
 
+const NAV_MARKERS: Record<string, string> = {
+  overview: 'O',
+  career: 'C',
+  education: 'E',
+  lifestyle: 'L',
+  personal: 'P',
+  banking: 'B',
+  market: 'M',
+  property: 'R',
+  business: 'S',
+  network: 'N',
+  ledger: 'G',
+}
+
 export function HeroPanel({
   activeView,
   views,
@@ -63,6 +77,9 @@ export function HeroPanel({
             }
             data-mobile-open={mobileDrawerOpen ? 'true' : 'false'}
           >
+            <span className="side-nav-marker" aria-hidden="true">
+              {NAV_MARKERS[view.id] ?? view.label.slice(0, 1)}
+            </span>
             <span>{view.kicker}</span>
             <strong>{view.label}</strong>
           </button>
