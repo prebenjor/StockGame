@@ -472,3 +472,39 @@ TODO
     - `output/web-game-education-degrees/full-page.png` confirms the initial programs catalog renders.
     - `output/web-game-career-education-detail/education-programs-full.png` plus `education-programs-state.json` confirm the expanded degree-heavy catalog renders with `toolbarSummary: "20 programs in view"`.
   - No `errors-*.json` files were generated during the career/education validation runs.
+- Rebuilt the Market `Overview` into a terminal-style board instead of the old `selected card + desk snapshot + narrow mini-card column` layout.
+- Overview now uses a fixed top-to-bottom market hierarchy:
+  - portfolio summary bar
+  - weekly ticker strip
+  - selected-symbol quote panel
+  - market board toolbar + responsive symbol grid
+  - latest market-news preview
+- Removed from the old overview flow:
+  - the `Desk snapshot` side panel
+  - symbol-selector pills inside the selected card
+  - `Focus` buttons on overview symbol cards
+- Added a new quote panel structure:
+  - left: finance-style hero chart with axes, dashed gridlines, range selector, gradient fill, and hover crosshair tooltip
+  - right: compact symbol stats, watchlist toggle, and inline buy/sell actions
+- Added a new shared market-chart layer in `src/features/market/MarketCharts.tsx` and extended `src/features/market/chartRanges.ts` so the UI can derive:
+  - richer chart points
+  - value-axis ticks
+  - time-axis ticks by range
+  - trend descriptions
+- Market board cards now render as a true responsive grid with equal-width symbol cards instead of a left-stuck narrow column.
+- Added overview-local inline trade flow:
+  - `Buy` and `Sell` expand an inline quantity/total/remaining-cash panel
+  - no new reducer actions were needed; the panel still dispatches existing `BUY_STOCK` and `SELL_STOCK`
+  - a short local toast confirms purchases and sales
+- `render_game_to_text` now exports `ui.marketTradeMode` from the active market section so browser validation can prove whether the inline trade panel is open.
+- Re-verified after the market redesign with `npm run lint`, `npx tsc -b`, and `npm run build` (build still requires escalation because Vite config loading hits sandbox `spawn EPERM`).
+- Browser validation for the market redesign:
+  - Shared Playwright client:
+    - `output/web-game-market-terminal-idle/state-0.json` confirms the overview exports `activeView: "market"`, `activeSubtab: "overview"`, `selectedMarketSymbol: "CITY"`, and `ui.marketTradeMode: null`.
+  - Direct Playwright captures:
+    - `output/web-game-market-terminal-detail/market-overview.png` confirms the redesigned hierarchy renders in-browser.
+    - `output/web-game-market-terminal-detail/market-selected-second-card.png` plus `market-state.json` confirm clicking a board card updates the focused symbol to `BRIX` and opening the buy flow exports `ui.marketTradeMode: "buy"`.
+    - `output/web-game-market-terminal-detail/market-buy-inline.png` confirms the inline buy panel renders inside the quote sidebar.
+    - `output/web-game-market-terminal-detail/market-overview-no-hints.png` confirms the market layout reads cleanly once the global hints dock is hidden.
+    - `output/web-game-market-terminal-detail/market-news-route-state.json` confirms the overview `Open News` CTA routes into the `News` subtab with `activeSubtab: "news"`.
+- The fixed hints dock can still intercept clicks near the lower-right edge of the market overview in headless/browser automation if left open. The market redesign itself works, but future shell cleanup should probably make the dock less overlapping on dense desktop sections.

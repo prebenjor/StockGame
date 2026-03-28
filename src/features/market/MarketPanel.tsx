@@ -1,13 +1,20 @@
+import { useEffect, useState } from 'react'
 import { CardMedia } from '../../components/CardMedia'
 import { SectionTabs } from '../../components/SectionTabs'
 import { SectionToolbar, type ToolbarFilter } from '../../components/SectionToolbar'
-import { SparklineChart } from '../../components/SparklineChart'
 import { useStoredUiState } from '../../components/useStoredUiState'
 import { money, price } from '../../game/core/format'
 import type { GameAction, GameState, MarketHistoryPoint } from '../../game/core/types'
 import { getTradingFee, hasStableHousing } from '../../game/core/utils'
 import { SECTION_THEMES } from '../../ui/sectionThemes'
-import { MARKET_CHART_RANGES, type MarketChartRange, getMarketRangeChange, toMarketChartPoints } from './chartRanges'
+import {
+  MARKET_CHART_RANGES,
+  describeMarketTrend,
+  getMarketRangeChange,
+  toMarketChartPoints,
+  type MarketChartRange,
+} from './chartRanges'
+import { MarketHeroChart, MarketSparkline } from './MarketCharts'
 
 type Props = {
   state: GameState
@@ -15,6 +22,7 @@ type Props = {
 }
 
 type MarketTab = 'overview' | 'watchlist' | 'news' | 'exchange'
+type TradeMode = 'buy' | 'sell' | null
 
 type MarketUiState = {
   tab: MarketTab
@@ -32,6 +40,8 @@ type MarketUiState = {
   heldOnly: boolean
   sort: 'move-desc' | 'move-asc' | 'price-desc' | 'price-asc' | 'symbol'
   selectedSymbol: string
+  tradeMode: TradeMode
+  tradeShares: number
 }
 
 const MARKET_TABS = [
@@ -57,6 +67,8 @@ const MARKET_UI_DEFAULT: MarketUiState = {
   heldOnly: false,
   sort: 'move-desc',
   selectedSymbol: 'CITY',
+  tradeMode: null,
+  tradeShares: 1,
 }
 
 function getSearchMatch(text: string, search: string) {
@@ -95,11 +107,25 @@ function getChartPoints(history: MarketHistoryPoint[], range: MarketChartRange, 
   return toMarketChartPoints(history, range, currentWeek)
 }
 
+function getRelativeNewsAge(currentWeek: number, newsWeek: number) {
+  const delta = Math.max(0, currentWeek - newsWeek)
+  if (delta === 0) return 'This week'
+  if (delta === 1) return '1 week ago'
+  return `${delta} weeks ago`
+}
+
 export function MarketPanel({ state, dispatch }: Props) {
   const theme = SECTION_THEMES.market
   const fee = getTradingFee(state)
   const sectors = ['all', ...Array.from(new Set(state.market.map((stock) => stock.sector))).sort()]
-  const [ui, setUi] = useStoredUiState<MarketUiState>('street-to-stock-market-ui-v2', MARKET_UI_DEFAULT)
+  const [ui, setUi] = useStoredUiState<MarketUiState>('street-to-stock-market-ui-v3', MARKET_UI_DEFAULT)
+  const [flashMessage, setFlashMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!flashMessage) return undefined
+    const timeout = window.setTimeout(() => setFlashMessage(null), 2200)
+    return () => window.clearTimeout(timeout)
+  }, [flashMessage])
 
   const heldSymbols = Object.keys(state.holdings).filter((symbol) => (state.holdings[symbol]?.shares ?? 0) > 0)
   const fallbackSelectedSymbol = state.watchlist[0] ?? heldSymbols[0] ?? state.market[0]?.symbol ?? 'CITY'
@@ -150,7 +176,8 @@ export function MarketPanel({ state, dispatch }: Props) {
     state.holdings,
   )
 
-  const storedSelectedSymbol = state.market.some((stock) => stock.symbol === ui.selectedSymbol) ? ui.selectedSymbol : fallbackSelectedSymbol
+  const selectedSymbolExists = state.market.some((stock) => stock.symbol === ui.selectedSymbol)
+  const storedSelectedSymbol = selectedSymbolExists ? ui.selectedSymbol : fallbackSelectedSymbol
   const selectedSymbol =
     ui.tab === 'overview'
       ? (overviewRows.find((stock) => stock.symbol === storedSelectedSymbol)?.symbol ?? overviewRows[0]?.symbol ?? fallbackSelectedSymbol)
@@ -160,17 +187,48 @@ export function MarketPanel({ state, dispatch }: Props) {
   const selectedPoints = getChartPoints(state.marketHistory[selectedSymbol] ?? [], ui.chartRange, state.week)
   const selectedRangeChange = getMarketRangeChange(state.marketHistory[selectedSymbol] ?? [], ui.chartRange, state.week)
   const rangeLabel = getRangeLabel(ui.chartRange)
+  const selectedTrend = describeMarketTrend(selectedRangeChange)
+  const latestNews = state.marketNews.slice(0, 3)
+  const latestMoverRows = state.market.slice().sort((left, right) => right.change - left.change)
 
-  const focusRows = overviewRows.slice(0, 6)
-  const topMover = state.market.slice().sort((left, right) => Math.abs(right.change) - Math.abs(left.change))[0]
   const holdingsValue = state.market.reduce((total, stock) => {
     const holding = state.holdings[stock.symbol]
     return total + (holding ? holding.shares * stock.price : 0)
   }, 0)
+  const holdingsCostBasis = state.market.reduce((total, stock) => {
+    const holding = state.holdings[stock.symbol]
+    return total + (holding ? holding.shares * holding.averageCost : 0)
+  }, 0)
+  const portfolioDelta = holdingsValue - holdingsCostBasis
   const monthlyDividendRunRate = state.market.reduce((total, stock) => {
     const holding = state.holdings[stock.symbol]
     return total + (holding ? holding.shares * stock.dividend : 0)
   }, 0)
+
+  const tradeShares = Math.max(1, Math.floor(ui.tradeShares || 1))
+  const buyTotal = selectedStock ? selectedStock.price * tradeShares + fee : 0
+  const sellGross = selectedStock ? selectedStock.price * tradeShares : 0
+  const sellNet = Math.max(0, sellGross - fee)
+  const buyRemaining = state.cash - buyTotal
+  const sellRemainingShares = Math.max(0, (selectedHolding?.shares ?? 0) - tradeShares)
+  const canBuy = selectedStock && buyRemaining >= 0
+  const canSell = selectedStock && selectedHolding && tradeShares <= selectedHolding.shares
+
+  const selectSymbol = (symbol: string) => {
+    setUi((current) => ({
+      ...current,
+      selectedSymbol: symbol,
+      tradeMode: null,
+      tradeShares: 1,
+    }))
+  }
+
+  const updateTradeShares = (nextShares: number) => {
+    setUi((current) => ({
+      ...current,
+      tradeShares: Math.max(1, Math.floor(nextShares || 1)),
+    }))
+  }
 
   const toolbarFilters: ToolbarFilter[] =
     ui.tab === 'overview'
@@ -291,16 +349,6 @@ export function MarketPanel({ state, dispatch }: Props) {
                 onChange: (checked) => setUi((current) => ({ ...current, heldOnly: checked })),
               },
             ]
-
-  const toolbarSummary =
-    ui.tab === 'overview'
-      ? `${overviewRows.length} symbols in board | ${rangeLabel} view | ${selectedStock.symbol} focused`
-      : ui.tab === 'watchlist'
-        ? `${watchlistRows.length} tracked names | ${rangeLabel} view | sorted ${ui.sort.replace('-', ' ')}`
-        : ui.tab === 'news'
-          ? `${newsRows.length} tape items | ${ui.newsType === 'all' ? 'all events' : ui.newsType} | ${ui.newsTone === 'all' ? 'all tones' : ui.newsTone}`
-          : `${exchangeRows.length} tradable names | ${rangeLabel} view | sorted ${ui.sort.replace('-', ' ')}`
-
   const sortOptions =
     ui.tab === 'news'
       ? []
@@ -313,11 +361,18 @@ export function MarketPanel({ state, dispatch }: Props) {
         ]
 
   const searchPlaceholder =
+    ui.tab === 'news'
+      ? 'Search tape by symbol or headline'
+      : 'Search symbols, names, and sectors'
+
+  const toolbarSummary =
     ui.tab === 'overview'
-      ? 'Search the market board by symbol, name, or sector'
-      : ui.tab === 'news'
-        ? 'Search tape by symbol or headline'
-        : 'Search symbols, names, and sectors'
+      ? `${overviewRows.length} symbols | ${state.watchlist.length} watchlist | ${selectedStock.symbol} | ${ui.tradeMode ?? 'read'}`
+      : ui.tab === 'watchlist'
+        ? `${watchlistRows.length} tracked names | ${rangeLabel} view | sorted ${ui.sort.replace('-', ' ')}`
+        : ui.tab === 'news'
+          ? `${newsRows.length} tape items | ${ui.newsType === 'all' ? 'all events' : ui.newsType} | ${ui.newsTone === 'all' ? 'all tones' : ui.newsTone}`
+          : `${exchangeRows.length} tradable names | ${rangeLabel} view | sorted ${ui.sort.replace('-', ' ')}`
 
   return (
     <section
@@ -327,6 +382,7 @@ export function MarketPanel({ state, dispatch }: Props) {
       data-toolbar-summary={toolbarSummary}
       data-selected-symbol={selectedSymbol}
       data-chart-range={ui.chartRange}
+      data-trade-mode={ui.tradeMode ?? ''}
       style={
         {
           '--section-accent': theme.accent,
@@ -334,8 +390,6 @@ export function MarketPanel({ state, dispatch }: Props) {
           '--section-glow': theme.glow,
           '--section-panel': theme.panelTint,
           '--section-border': theme.borderTone,
-          '--section-chart-line': theme.chartLine,
-          '--section-chart-fill': theme.chartFill,
         } as React.CSSProperties
       }
     >
@@ -346,7 +400,7 @@ export function MarketPanel({ state, dispatch }: Props) {
         </div>
         <p>
           {state.bankAccount && hasStableHousing(state)
-            ? 'Read the board first, then decide whether you actually want to buy, watch, or wait.'
+            ? 'Read the board, pick a time window, and avoid forcing trades.'
             : 'The market gets easier once life is steadier, but you can still start small. Read the board, pick a time window, and avoid forcing trades.'}
         </p>
       </div>
@@ -354,149 +408,321 @@ export function MarketPanel({ state, dispatch }: Props) {
       <SectionTabs
         sectionId="market"
         activeTab={ui.tab}
-        onChange={(tabId) => setUi((current) => ({ ...current, tab: tabId as MarketTab }))}
+        onChange={(tabId) =>
+          setUi((current) => ({
+            ...current,
+            tab: tabId as MarketTab,
+            tradeMode: null,
+            tradeShares: 1,
+          }))
+        }
         tabs={MARKET_TABS as unknown as Array<{ id: string; label: string; kicker?: string }>}
         theme={theme}
       />
 
-      <div className="market-range-bar" aria-label="Chart range selector">
-        <span className="panel-kicker">Chart Range</span>
-        <div className="market-range-row" role="group" aria-label="Select market chart range">
-          {MARKET_CHART_RANGES.map((option) => (
-            <button
-              key={option.value}
-              className={`mini-button market-range-chip ${ui.chartRange === option.value ? '' : 'ghost'}`}
-              type="button"
-              onClick={() => setUi((current) => ({ ...current, chartRange: option.value }))}
-              aria-pressed={ui.chartRange === option.value}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <p className="market-range-summary">All visible charts are showing the same {rangeLabel} window.</p>
-      </div>
-
-      <SectionToolbar
-        sectionId="market"
-        searchValue={ui.search}
-        searchPlaceholder={searchPlaceholder}
-        onSearchChange={(value) => setUi((current) => ({ ...current, search: value }))}
-        filters={toolbarFilters}
-        sortOptions={sortOptions}
-        sortValue={sortOptions.length > 0 ? ui.sort : undefined}
-        onSortChange={sortOptions.length > 0 ? (value) => setUi((current) => ({ ...current, sort: value as MarketUiState['sort'] })) : undefined}
-        summary={toolbarSummary}
-      />
-
-      {ui.tab === 'overview' ? (
-        <div className="section-stack">
-          <div className="dual-grid market-overview-grid">
-            <article className="card current market-hero-card">
-              <div className="card-topline">
-                <div>
-                  <span className="panel-kicker">Selected symbol</span>
-                  <h3>{selectedStock.symbol}</h3>
-                </div>
-                <span className={selectedRangeChange >= 0 ? 'positive' : 'negative'}>{formatPercent(selectedRangeChange)}</span>
-              </div>
-              <p>{selectedStock.name}. {selectedStock.thesis}</p>
-              <SparklineChart
-                points={selectedPoints}
-                label={`${selectedStock.symbol} price history`}
-                lineColor={theme.chartLine}
-                fillColor={theme.chartFill}
-                className="hero-market-chart"
-                variant="hero"
-                footerLabel={`${rangeLabel} window`}
-              />
-              <div className="tag-row">
-                <span className="tag">{selectedStock.assetType === 'etf' ? 'ETF' : 'Stock'}</span>
-                <span className="tag">{selectedStock.sector}</span>
-                <span className="tag">{price(selectedStock.price)}</span>
-                <span className="tag">Week {formatPercent(selectedStock.change)}</span>
-                <span className="tag">Fee {money(fee)}</span>
-                {selectedHolding ? <span className="tag accent">Held {selectedHolding.shares} sh</span> : null}
-                {state.watchlist.includes(selectedStock.symbol) ? <span className="tag accent">Watching</span> : null}
-              </div>
-              <div className="market-selector-row">
-                {focusRows.length === 0 ? (
-                  <span className="tag">No symbols match the board screen.</span>
-                ) : (
-                  focusRows.map((stock) => (
-                    <button
-                      key={stock.symbol}
-                      className={`mini-button ${selectedSymbol === stock.symbol ? '' : 'ghost'}`}
-                      type="button"
-                      onClick={() => setUi((current) => ({ ...current, selectedSymbol: stock.symbol }))}
-                    >
-                      {stock.symbol}
-                    </button>
-                  ))
-                )}
-              </div>
-            </article>
-
-            <article className="card market-overview-summary">
-              <div className="card-topline">
-                <h3>Desk snapshot</h3>
-                <span>{rangeLabel}</span>
-              </div>
-              <div className="ledger-grid">
-                <div><span>Portfolio value</span><strong>{money(holdingsValue)}</strong></div>
-                <div><span>Positions</span><strong>{Object.keys(state.holdings).length}</strong></div>
-                <div><span>Watchlist</span><strong>{state.watchlist.length}</strong></div>
-                <div><span>Monthly dividend run rate</span><strong>{money(monthlyDividendRunRate)}</strong></div>
-              </div>
-              <p>Use this as the reading layer: search the board, lock the time window, compare names on equal-size cards, then move into Watchlist, News, or Exchange when you want to act.</p>
-              {topMover ? (
-                <div className="market-summary-note">
-                  <strong>Top weekly mover</strong>
-                  <span>{topMover.symbol} {formatPercent(topMover.change)} this week.</span>
-                </div>
-              ) : null}
-            </article>
-          </div>
-
-          <div className="card-grid compact market-card-grid">
-            {focusRows.length === 0 ? (
-              <article className="card empty-state">
-                <h3>No symbols match the board</h3>
-                <p>Broaden the search or reset the asset-type screen. The board is supposed to narrow your attention, not blank the market entirely.</p>
-              </article>
-            ) : (
-              focusRows.map((stock) => (
-                <article className="card market-mini-card" key={stock.symbol}>
-                  <div className="card-topline">
-                    <h3>{stock.symbol}</h3>
-                    <span className={getMarketRangeChange(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week) >= 0 ? 'positive' : 'negative'}>
-                      {formatPercent(getMarketRangeChange(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week))}
-                    </span>
-                  </div>
-                  <p>{stock.name}</p>
-                  <SparklineChart
-                    variant="card"
-                    points={getChartPoints(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week)}
-                    label={`${stock.symbol} ${rangeLabel} chart`}
-                    lineColor={theme.chartLine}
-                    fillColor={theme.chartFill}
-                    footerLabel={`${rangeLabel} chart`}
-                  />
-                  <div className="tag-row">
-                    <span className="tag">{price(stock.price)}</span>
-                    <span className="tag">{stock.assetType}</span>
-                    <span className="tag">Week {formatPercent(stock.change)}</span>
-                  </div>
-                  <button className="mini-button ghost" type="button" onClick={() => setUi((current) => ({ ...current, selectedSymbol: stock.symbol }))}>
-                    Focus
-                  </button>
-                </article>
-              ))
-            )}
-          </div>
-        </div>
+      {ui.tab !== 'overview' ? (
+        <SectionToolbar
+          sectionId="market"
+          searchValue={ui.search}
+          searchPlaceholder={searchPlaceholder}
+          onSearchChange={(value) => setUi((current) => ({ ...current, search: value }))}
+          filters={toolbarFilters}
+          sortOptions={sortOptions}
+          sortValue={sortOptions.length > 0 ? ui.sort : undefined}
+          onSortChange={sortOptions.length > 0 ? (value) => setUi((current) => ({ ...current, sort: value as MarketUiState['sort'] })) : undefined}
+          summary={toolbarSummary}
+        />
       ) : null}
 
+      {ui.tab === 'overview' ? (
+        <div className="section-stack market-overview-stack">
+          <article className="market-portfolio-bar">
+            <div className="market-portfolio-stat">
+              <span>Portfolio Value</span>
+              <strong className={portfolioDelta > 0 ? 'positive' : portfolioDelta < 0 ? 'negative' : ''}>{money(holdingsValue)}</strong>
+            </div>
+            <div className="market-portfolio-stat">
+              <span>Cash Available</span>
+              <strong>{money(state.cash)}</strong>
+            </div>
+            <div className="market-portfolio-stat">
+              <span>Positions</span>
+              <strong>{heldSymbols.length}</strong>
+            </div>
+            <div className="market-portfolio-stat">
+              <span>Watchlist</span>
+              <strong>{state.watchlist.length}</strong>
+            </div>
+            <div className="market-portfolio-stat">
+              <span>Dividend Income / mo</span>
+              <strong>{money(monthlyDividendRunRate)}</strong>
+            </div>
+          </article>
+
+          <div className="market-ticker-strip" aria-label="Weekly market movers">
+            {latestMoverRows.map((stock) => (
+              <button
+                key={stock.symbol}
+                className={`market-ticker-chip ${selectedSymbol === stock.symbol ? 'selected' : ''} ${stock.change >= 0 ? 'positive' : 'negative'}`}
+                type="button"
+                onClick={() => selectSymbol(stock.symbol)}
+              >
+                <strong>{stock.symbol}</strong>
+                <span>{formatPercent(stock.change)}</span>
+              </button>
+            ))}
+          </div>
+
+          <article className="market-quote-card">
+            <div className="market-quote-main">
+              <div className="market-quote-header">
+                <div className="market-quote-line">
+                  <strong>{selectedStock.symbol}</strong>
+                  <span>{selectedStock.name}</span>
+                  <strong>{price(selectedStock.price)}</strong>
+                  <span className={`market-change-pill ${selectedRangeChange >= 0 ? 'positive' : 'negative'}`}>{formatPercent(selectedRangeChange)}</span>
+                </div>
+              </div>
+
+              <MarketHeroChart
+                points={selectedPoints}
+                range={ui.chartRange}
+                change={selectedRangeChange}
+                label={`${selectedStock.symbol} chart`}
+              />
+
+              <div className="market-range-row" role="group" aria-label="Select market chart range">
+                {MARKET_CHART_RANGES.map((option) => (
+                  <button
+                    key={option.value}
+                    className={`market-range-button ${ui.chartRange === option.value ? 'active' : ''}`}
+                    type="button"
+                    onClick={() => setUi((current) => ({ ...current, chartRange: option.value }))}
+                    aria-pressed={ui.chartRange === option.value}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <aside className="market-quote-side">
+              <div className="card-topline">
+                <h3>Symbol details</h3>
+                <span>{rangeLabel}</span>
+              </div>
+              <dl className="market-detail-list">
+                <div><dt>Price</dt><dd>{price(selectedStock.price)}</dd></div>
+                <div><dt>Week Δ</dt><dd className={selectedStock.change >= 0 ? 'positive' : 'negative'}>{formatPercent(selectedStock.change)}</dd></div>
+                <div><dt>Type</dt><dd>{selectedStock.assetType.toUpperCase()}</dd></div>
+                <div><dt>Sector</dt><dd>{selectedStock.sector}</dd></div>
+                <div><dt>Fee</dt><dd>{money(fee)}</dd></div>
+                <div><dt>Trend</dt><dd className={selectedRangeChange >= 0 ? 'positive' : selectedRangeChange < 0 ? 'negative' : ''}>{selectedTrend.replace(' trend', '')}</dd></div>
+              </dl>
+
+              <div className="market-quote-actions">
+                <button
+                  className="mini-button"
+                  type="button"
+                  onClick={() => setUi((current) => ({ ...current, tradeMode: 'buy', tradeShares: Math.max(1, current.tradeShares || 1) }))}
+                >
+                  Buy
+                </button>
+                <button
+                  className={`mini-button ghost ${state.watchlist.includes(selectedStock.symbol) ? 'active' : ''}`}
+                  type="button"
+                  onClick={() => dispatch({ type: 'TOGGLE_WATCHLIST', symbol: selectedStock.symbol })}
+                >
+                  {state.watchlist.includes(selectedStock.symbol) ? '★ Watching' : '+ Watchlist'}
+                </button>
+                {selectedHolding ? (
+                  <button
+                    className="mini-button ghost"
+                    type="button"
+                    onClick={() => setUi((current) => ({ ...current, tradeMode: 'sell', tradeShares: Math.min(selectedHolding.shares, Math.max(1, current.tradeShares || 1)) }))}
+                  >
+                    Sell
+                  </button>
+                ) : null}
+              </div>
+
+              {ui.tradeMode ? (
+                <div className="market-trade-panel">
+                  <div className="market-trade-header">
+                    <strong>{ui.tradeMode === 'buy' ? 'Buy' : 'Sell'} {selectedStock.symbol}</strong>
+                    <span>{price(selectedStock.price)}/share</span>
+                  </div>
+
+                  <div className="market-trade-quantity">
+                    <label htmlFor="market-trade-shares">Shares</label>
+                    <div className="market-trade-stepper">
+                      <button type="button" className="mini-button ghost" onClick={() => updateTradeShares(tradeShares - 1)} disabled={tradeShares <= 1}>
+                        -
+                      </button>
+                      <input
+                        id="market-trade-shares"
+                        type="number"
+                        min={1}
+                        max={ui.tradeMode === 'sell' ? selectedHolding?.shares ?? 1 : undefined}
+                        value={tradeShares}
+                        onChange={(event) => updateTradeShares(Number(event.target.value))}
+                      />
+                      <button
+                        type="button"
+                        className="mini-button ghost"
+                        onClick={() => updateTradeShares(tradeShares + 1)}
+                        disabled={ui.tradeMode === 'sell' && !!selectedHolding && tradeShares >= selectedHolding.shares}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <dl className="market-trade-summary">
+                    {ui.tradeMode === 'buy' ? (
+                      <>
+                        <div><dt>Total cost</dt><dd>{money(buyTotal)}</dd></div>
+                        <div><dt>Your cash</dt><dd>{money(state.cash)}</dd></div>
+                        <div><dt>Remaining</dt><dd className={buyRemaining >= 0 ? '' : 'negative'}>{money(buyRemaining)}</dd></div>
+                        <div><dt>Fee</dt><dd>{money(fee)}</dd></div>
+                      </>
+                    ) : (
+                      <>
+                        <div><dt>Total proceeds</dt><dd>{money(sellNet)}</dd></div>
+                        <div><dt>Your cash</dt><dd>{money(state.cash)}</dd></div>
+                        <div><dt>After sale</dt><dd>{money(state.cash + sellNet)}</dd></div>
+                        <div><dt>Fee</dt><dd>{money(fee)}</dd></div>
+                        <div><dt>Shares left</dt><dd>{sellRemainingShares}</dd></div>
+                      </>
+                    )}
+                  </dl>
+
+                  <div className="market-trade-actions">
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => setUi((current) => ({ ...current, tradeMode: null, tradeShares: 1 }))}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="primary-button"
+                      type="button"
+                      disabled={ui.tradeMode === 'buy' ? !canBuy : !canSell}
+                      onClick={() => {
+                        if (ui.tradeMode === 'buy') {
+                          dispatch({ type: 'BUY_STOCK', symbol: selectedStock.symbol, shares: tradeShares })
+                          setFlashMessage(`Bought ${tradeShares} share${tradeShares === 1 ? '' : 's'} of ${selectedStock.symbol} for ${price(selectedStock.price)} + ${money(fee)} fee`)
+                        } else {
+                          dispatch({ type: 'SELL_STOCK', symbol: selectedStock.symbol, shares: tradeShares })
+                          setFlashMessage(`Sold ${tradeShares} share${tradeShares === 1 ? '' : 's'} of ${selectedStock.symbol} for ${price(selectedStock.price)} less ${money(fee)} fee`)
+                        }
+                        setUi((current) => ({ ...current, tradeMode: null, tradeShares: 1 }))
+                      }}
+                    >
+                      {ui.tradeMode === 'buy' ? 'Confirm Purchase' : 'Confirm Sale'}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {flashMessage ? <div className="market-trade-toast">{flashMessage}</div> : null}
+
+              <p className="market-quote-thesis">{selectedStock.thesis}</p>
+            </aside>
+          </article>
+
+          <section className="market-board-section">
+            <div className="card-topline market-board-topline">
+              <h3>Market board</h3>
+              <span>{overviewRows.length} symbols</span>
+            </div>
+
+            <SectionToolbar
+              sectionId="market-overview-board"
+              searchValue={ui.search}
+              searchPlaceholder={searchPlaceholder}
+              onSearchChange={(value) => setUi((current) => ({ ...current, search: value }))}
+              filters={toolbarFilters}
+              sortOptions={sortOptions}
+              sortValue={ui.sort}
+              onSortChange={(value) => setUi((current) => ({ ...current, sort: value as MarketUiState['sort'] }))}
+            />
+
+            <div className="market-board-grid">
+              {overviewRows.length === 0 ? (
+                <article className="card empty-state">
+                  <h3>No symbols match the board</h3>
+                  <p>Broaden the search or reset the asset-type filter. The board should narrow attention, not disappear.</p>
+                </article>
+              ) : (
+                overviewRows.map((stock) => {
+                  const rangeChange = getMarketRangeChange(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week)
+                  const isSelected = stock.symbol === selectedSymbol
+                  return (
+                    <button
+                      key={stock.symbol}
+                      className={`market-board-card ${isSelected ? 'selected' : ''}`}
+                      type="button"
+                      onClick={() => selectSymbol(stock.symbol)}
+                    >
+                      <div className="market-board-card-top">
+                        <strong>{stock.symbol}</strong>
+                        <span className={rangeChange >= 0 ? 'positive' : 'negative'}>{formatPercent(rangeChange)}</span>
+                      </div>
+                      <p>{stock.name}</p>
+                      <strong className="market-board-price">{price(stock.price)}</strong>
+                      <MarketSparkline
+                        points={getChartPoints(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week)}
+                        label={`${stock.symbol} sparkline`}
+                        change={rangeChange}
+                      />
+                      <div className="market-board-meta">
+                        <span>{stock.assetType.toUpperCase()} · {describeMarketTrend(rangeChange).replace(' trend', '')}</span>
+                        <span>Wk {formatPercent(stock.change)}</span>
+                      </div>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </section>
+
+          <section className="market-news-preview">
+            <div className="card-topline">
+              <h3>Latest market news</h3>
+              <button
+                className="mini-button ghost"
+                type="button"
+                onClick={() => setUi((current) => ({ ...current, tab: 'news' }))}
+              >
+                Open News
+              </button>
+            </div>
+            <div className="market-news-preview-list">
+              {latestNews.length === 0 ? (
+                <p className="compact-note">No fresh tape yet. Advance a few weeks and the board will start telling stories.</p>
+              ) : (
+                latestNews.map((item) => (
+                  <button
+                    key={item.id}
+                    className="market-news-preview-item"
+                    type="button"
+                    onClick={() => setUi((current) => ({ ...current, tab: 'news', selectedSymbol: item.symbol, tradeMode: null, tradeShares: 1 }))}
+                  >
+                    <span className="market-news-icon" aria-hidden="true">N</span>
+                    <span className="market-news-copy">
+                      <strong>{item.title}</strong>
+                      <small>{item.symbol} · {getRelativeNewsAge(state.week, item.week)}</small>
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </section>
+        </div>
+      ) : null}
+      
       {ui.tab === 'watchlist' ? (
         <div className="card-grid market-card-grid">
           {watchlistRows.length === 0 ? (
@@ -516,13 +742,10 @@ export function MarketPanel({ state, dispatch }: Props) {
                     <span className={chartChange >= 0 ? 'positive' : 'negative'}>{formatPercent(chartChange)}</span>
                   </div>
                   <p>{stock.name}</p>
-                  <SparklineChart
-                    variant="card"
+                  <MarketSparkline
                     points={getChartPoints(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week)}
                     label={`${stock.symbol} watchlist chart`}
-                    lineColor={theme.chartLine}
-                    fillColor={theme.chartFill}
-                    footerLabel={`${rangeLabel} chart`}
+                    change={chartChange}
                   />
                   <div className="tag-row">
                     <span className="tag">{price(stock.price)}</span>
@@ -532,7 +755,7 @@ export function MarketPanel({ state, dispatch }: Props) {
                     {holding ? <span className="tag accent">Held {holding.shares}</span> : null}
                   </div>
                   <div className="action-row">
-                    <button className="mini-button ghost" type="button" onClick={() => setUi((current) => ({ ...current, selectedSymbol: stock.symbol, tab: 'overview' }))}>
+                    <button className="mini-button ghost" type="button" onClick={() => setUi((current) => ({ ...current, selectedSymbol: stock.symbol, tab: 'overview', tradeMode: null, tradeShares: 1 }))}>
                       Open Chart
                     </button>
                     <button id={`watch-stock-${stock.symbol}`} className="mini-button ghost" onClick={() => dispatch({ type: 'TOGGLE_WATCHLIST', symbol: stock.symbol })}>
@@ -563,7 +786,7 @@ export function MarketPanel({ state, dispatch }: Props) {
                 <strong>{item.title}</strong>
                 <p>{item.detail}</p>
                 <div className="action-row">
-                  <button className="mini-button ghost" type="button" onClick={() => setUi((current) => ({ ...current, selectedSymbol: item.symbol, tab: 'overview' }))}>
+                  <button className="mini-button ghost" type="button" onClick={() => setUi((current) => ({ ...current, selectedSymbol: item.symbol, tab: 'overview', tradeMode: null, tradeShares: 1 }))}>
                     Focus {item.symbol}
                   </button>
                 </div>
@@ -597,13 +820,10 @@ export function MarketPanel({ state, dispatch }: Props) {
                     <span className={chartChange >= 0 ? 'positive' : 'negative'}>{formatPercent(chartChange)}</span>
                   </div>
                   <p>{stock.name}</p>
-                  <SparklineChart
-                    variant="card"
+                  <MarketSparkline
                     points={getChartPoints(state.marketHistory[stock.symbol] ?? [], ui.chartRange, state.week)}
                     label={`${stock.symbol} exchange chart`}
-                    lineColor={theme.chartLine}
-                    fillColor={theme.chartFill}
-                    footerLabel={`${rangeLabel} chart`}
+                    change={chartChange}
                   />
                   <p>{stock.thesis}</p>
                   <div className="stock-meta">
@@ -654,7 +874,7 @@ export function MarketPanel({ state, dispatch }: Props) {
                     <div className="action-section">
                       <span className="action-label">Secondary Actions</span>
                       <div className="action-row">
-                        <button className="mini-button ghost" type="button" onClick={() => setUi((current) => ({ ...current, selectedSymbol: stock.symbol, tab: 'overview' }))}>
+                        <button className="mini-button ghost" type="button" onClick={() => setUi((current) => ({ ...current, selectedSymbol: stock.symbol, tab: 'overview', tradeMode: null, tradeShares: 1 }))}>
                           Open Chart
                         </button>
                         <button

@@ -379,6 +379,7 @@ function App() {
       const selectedSymbol = activeSection?.dataset.selectedSymbol
       const activeSubtab = activeSection?.dataset.activeSubtab
       const activeChartRange = activeSection?.dataset.chartRange as MarketChartRange | undefined
+      const activeTradeMode = activeSection?.dataset.tradeMode || null
       const marketHistoryPoints = selectedSymbol ? latestState.marketHistory[selectedSymbol] ?? [] : []
       const visibleMarketHistory = selectedSymbol && activeChartRange
         ? sliceMarketHistory(marketHistoryPoints, activeChartRange, latestState.week)
@@ -521,6 +522,7 @@ function App() {
           mobileDrawerOpen: mobileRailOpen,
           assignedWeekSlots: latestAssignedWeekSlots,
           weekPlanReadyToRun: latestWeekPlanReady,
+          marketTradeMode: activeTradeMode,
         },
         recentLog: latestState.log.slice(0, 3).map((entry) => ({
           title: entry.title,
