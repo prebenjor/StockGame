@@ -395,7 +395,7 @@ function applyPlannedWeekAction(state: GameState, slotIndex: number) {
 }
 
 function canBuyCourse(state: GameState, course: Course) {
-  return !state.certifications.includes(course.id) && !getLockedReason(course.reputationRequired, [], state) && state.cash >= course.cost && state.actionPoints > 0 && state.energy >= 12
+  return !state.certifications.includes(course.id) && !getLockedReason(course.reputationRequired, [], state, false, course.programRequirements) && state.cash >= course.cost && state.actionPoints > 0 && state.energy >= 12
 }
 
 function applyLifeEvent(state: GameState, event: LifeEvent) {
@@ -869,6 +869,7 @@ export function createInitialState(): GameState {
     jobId: 'night-cleaning',
     sideJobIds: [],
     certifications: [],
+    completedEducationPrograms: [],
     upgrades: [],
     educationEnrollment: null,
     market: BASE_MARKET.map((stock) => ({ ...stock })),
@@ -1312,7 +1313,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   if (action.type === 'ENROLL_EDUCATION') {
     const program = EDUCATION_PROGRAM_MAP[action.programId]
     if (!program || state.educationEnrollment || state.reputation < program.reputationRequired) return state
-    if (program.certificationReward && state.certifications.includes(program.certificationReward)) return state
+    if (state.completedEducationPrograms.includes(program.id)) return state
+    if (program.certificationReward && state.certifications.includes(program.certificationReward) && program.educationTier === 'certificate') return state
+    if (program.programRequirements?.some((programId) => !state.completedEducationPrograms.includes(programId))) return state
+    if (program.certificationRequirements?.some((certificationId) => !state.certifications.includes(certificationId))) return state
 
     if (action.financing === 'cash') {
       if (state.cash < program.totalCost) return state
@@ -1370,7 +1374,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   if (action.type === 'BUY_COURSE') {
     const course = COURSE_MAP[action.courseId]
     if (!course || !canBuyCourse(state, course)) return state
-    const contactId = course.id === 'landlord-license' ? 'broker' : course.id === 'coding-bootcamp' ? 'recruiter' : course.id === 'finance-cert' ? 'banker' : ''
+    const contactId =
+      course.careerField === 'property-real-estate'
+        ? 'broker'
+        : course.careerField === 'technology-product'
+          ? 'recruiter'
+          : course.careerField === 'finance-accounting'
+            ? 'banker'
+            : course.careerField === 'operations-logistics'
+              ? 'contractor'
+              : ''
     const nextState = applyConditionShift({ ...state, actionPoints: state.actionPoints - 1, cash: state.cash - course.cost, certifications: [...state.certifications, course.id] }, { reputation: 1, stress: 5, energy: -12 })
     return pushLog(contactId ? adjustContact(nextState, contactId, 4) : nextState, 'New qualification', `You completed ${course.title} for ${money(course.cost)}. New opportunities just opened up.`, 'good')
   }
@@ -2178,6 +2191,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         if (nextState.educationEnrollment.monthsRemaining <= 0) {
           nextState.knowledge = clamp(nextState.knowledge + program.knowledgeReward, 0, 999)
           nextState.reputation = clamp(nextState.reputation + program.reputationReward, 0, 999)
+          if (!nextState.completedEducationPrograms.includes(program.id)) {
+            nextState.completedEducationPrograms = [...nextState.completedEducationPrograms, program.id]
+          }
           if (program.certificationReward && !nextState.certifications.includes(program.certificationReward)) {
             nextState.certifications = [...nextState.certifications, program.certificationReward]
           }

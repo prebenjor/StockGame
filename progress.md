@@ -420,3 +420,55 @@ TODO
     - `output/web-game-teal-slate/mobile-overview.png` plus `mobile-overview-state.json` confirm the mobile layout still works under the new palette and typography.
     - `output/web-game-teal-slate/mobile-drawer.png` plus `mobile-drawer-state.json` confirm the drawer/nav styling also migrated cleanly.
   - No `errors-*.json` files were generated during the shared-client validation run.
+- Expanded the career system from a mostly flat roster into 6 field-based ladders with explicit metadata:
+  - `Operations & Logistics`
+  - `Finance & Accounting`
+  - `Property & Real Estate`
+  - `Sales & Marketing`
+  - `Technology & Product`
+  - `Healthcare & Administration`
+- Core content types now carry richer field metadata:
+  - `careerField`
+  - `ladderTier`
+  - `trackTags`
+  - optional `nextJobIds`
+  - optional `recommendedProgramIds`
+  - optional `programRequirements`
+- Career data now includes much deeper catalogs for:
+  - main jobs
+  - side work
+  - gigs
+  - courses / certifications
+  - field definitions and ladder labels
+- Career UI was rebuilt around fields and ladders:
+  - new subtabs: `Fields`, `Jobs`, `Side Work`, `Gigs`, `Progression`
+  - persistent field focus now carries across the subtabs
+  - current job, next rung, blockers, and field-specific progression are surfaced directly instead of as one flat list
+- Education was expanded from a short-program catalog into tiered study bands:
+  - `certificate`
+  - `diploma`
+  - `bachelor`
+  - `master`
+- Added a much larger, costlier education catalog with explicit field ties and higher stakes:
+  - short certs still exist as lower-tier entry points
+  - diplomas now bridge into mid-tier structured work
+  - bachelor tracks now take longer and cost materially more
+  - master tracks now sit at the top of the education ladder and are the most expensive programs in the game
+- Education state now tracks completed programs directly via `completedEducationPrograms`, and the save key was bumped to `street-to-stock-save-v12` because the save shape changed.
+- Job, gig, side-work, course, and program gating now respects formal program completion in addition to certifications, reputation, and stat thresholds.
+- Higher-tier roles in finance, property, operations, tech, and healthcare-admin can now be explicitly degree-gated or diploma-gated, while non-degree routes still remain viable into solid mid-tier jobs.
+- Guidance/tip logic is now partially field-aware:
+  - it can identify the dominant career field the player is drifting toward
+  - it can point out whether the next step is blocked by reputation, certification, or a missing formal program
+  - route guidance now mentions actual field progression instead of generic study/work advice
+- Re-verified after the career-ladder and education-tier pass with `npm run lint`, `npx tsc -b`, and `npm run build` (build still requires escalation because Vite config loading hits sandbox `spawn EPERM`).
+- Browser validation for the career/education expansion:
+  - Shared Playwright client:
+    - `output/web-game-career-ladders/state-0.json` confirms the new Career section exports `activeSubtab: "fields"` with `toolbarSummary: "6 fields | all ladders"`.
+    - `output/web-game-education-degrees/state-0.json` confirms the new Education section exports `activeSubtab: "programs"` with `toolbarSummary: "20 programs in view"`.
+  - Direct full-page captures:
+    - `output/web-game-career-ladders/full-page.png` confirms the new field overview cards render correctly.
+    - `output/web-game-career-education-detail/career-jobs-full.png` plus `career-jobs-state.json` confirm the expanded jobs ladder view renders with `toolbarSummary: "54 jobs | all fields"`.
+    - `output/web-game-education-degrees/full-page.png` confirms the initial programs catalog renders.
+    - `output/web-game-career-education-detail/education-programs-full.png` plus `education-programs-state.json` confirm the expanded degree-heavy catalog renders with `toolbarSummary: "20 programs in view"`.
+  - No `errors-*.json` files were generated during the career/education validation runs.

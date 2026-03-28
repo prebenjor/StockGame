@@ -1,1 +1,1 @@
-export const STORAGE_KEY = 'street-to-stock-save-v11'
+export const STORAGE_KEY = 'street-to-stock-save-v12'

@@ -1,5 +1,17 @@
 export type Tone = 'good' | 'bad' | 'neutral'
 
+export type CareerFieldId =
+  | 'operations-logistics'
+  | 'finance-accounting'
+  | 'property-real-estate'
+  | 'sales-marketing'
+  | 'technology-product'
+  | 'healthcare-administration'
+
+export type LadderTier = 'entry' | 'skilled' | 'specialist' | 'manager' | 'executive'
+
+export type EducationTier = 'certificate' | 'diploma' | 'bachelor' | 'master'
+
 export type MediaAsset = {
   imageUrl?: string
   imageAlt?: string
@@ -7,7 +19,26 @@ export type MediaAsset = {
   imageCreditUrl?: string
 }
 
-export type Job = MediaAsset & {
+export type CareerMetadata = {
+  careerField: CareerFieldId
+  ladderTier?: LadderTier
+  trackTags: string[]
+  nextJobIds?: string[]
+  recommendedProgramIds?: string[]
+  programRequirements?: string[]
+}
+
+export type CareerFieldDefinition = MediaAsset & {
+  id: CareerFieldId
+  label: string
+  description: string
+  accent: string
+  ladderLabels: Record<LadderTier, string>
+  preferredCertificationIds: string[]
+  preferredProgramIds: string[]
+}
+
+export type Job = MediaAsset & CareerMetadata & {
   id: string
   title: string
   salary: number
@@ -16,7 +47,7 @@ export type Job = MediaAsset & {
   description: string
 }
 
-export type Gig = MediaAsset & {
+export type Gig = MediaAsset & CareerMetadata & {
   id: string
   title: string
   payout: number
@@ -26,7 +57,7 @@ export type Gig = MediaAsset & {
   needsProperty?: boolean
 }
 
-export type SideJob = MediaAsset & {
+export type SideJob = MediaAsset & CareerMetadata & {
   id: string
   title: string
   category: 'shift' | 'internship' | 'seasonal' | 'freelance'
@@ -45,12 +76,13 @@ export type SideJob = MediaAsset & {
   bankAccountRequired?: boolean
 }
 
-export type Course = MediaAsset & {
+export type Course = MediaAsset & CareerMetadata & {
   id: string
   title: string
   cost: number
   reputationRequired: number
   description: string
+  educationTier: Extract<EducationTier, 'certificate'>
 }
 
 export type Upgrade = MediaAsset & {
@@ -212,7 +244,7 @@ export type DebtAccount = {
   securedPropertyUid?: string | null
 }
 
-export type EducationProgram = MediaAsset & {
+export type EducationProgram = MediaAsset & CareerMetadata & {
   id: string
   title: string
   description: string
@@ -223,7 +255,9 @@ export type EducationProgram = MediaAsset & {
   monthlyEnergy: number
   knowledgeReward: number
   reputationReward: number
+  educationTier: EducationTier
   certificationReward?: string
+  certificationRequirements?: string[]
 }
 
 export type EducationEnrollment = {
@@ -466,6 +500,7 @@ export type GameState = {
   jobId: string
   sideJobIds: string[]
   certifications: string[]
+  completedEducationPrograms: string[]
   upgrades: string[]
   educationEnrollment: EducationEnrollment | null
   market: Stock[]

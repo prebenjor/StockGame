@@ -1,5 +1,6 @@
 import { BOND_MAP } from '../../features/banking/data'
 import { COURSE_MAP, SIDE_JOB_MAP } from '../../features/career/data'
+import { EDUCATION_PROGRAM_MAP } from '../../features/education/data'
 import { BUSINESS_MAP } from '../../features/business/data'
 import { FOOD_OPTION_MAP, HOUSING_OPTION_MAP, TRANSPORT_OPTION_MAP, WELLNESS_OPTION_MAP } from '../../features/lifestyle/data'
 import { PROPERTY_MAP, TENANT_PROFILE_MAP } from '../../features/property/data'
@@ -30,6 +31,10 @@ export function randomItem<T>(items: T[]) {
 
 export function hasCertification(state: GameState, certificationId: string) {
   return state.certifications.includes(certificationId)
+}
+
+export function hasCompletedProgram(state: GameState, programId: string) {
+  return state.completedEducationPrograms.includes(programId)
 }
 
 export function hasUpgrade(state: GameState, upgradeId: string) {
@@ -384,12 +389,16 @@ export function getLockedReason(
   certifications: string[],
   state: GameState,
   needsProperty?: boolean,
+  programRequirements: string[] = [],
 ) {
   const reasons: string[] = []
 
   if (state.reputation < reputationRequired) reasons.push(`Need ${reputationRequired} reputation`)
   certifications.forEach((certificationId) => {
     if (!hasCertification(state, certificationId)) reasons.push(`Need ${COURSE_MAP[certificationId].title}`)
+  })
+  programRequirements.forEach((programId) => {
+    if (!hasCompletedProgram(state, programId)) reasons.push(`Need ${EDUCATION_PROGRAM_MAP[programId]?.title ?? programId}`)
   })
   if (needsProperty && !ownsProperty(state)) reasons.push('Need 1 property')
   if (state.energy < 10) reasons.push('Too exhausted')
@@ -399,15 +408,15 @@ export function getLockedReason(
 }
 
 export function canTakeJob(state: GameState, job: Job) {
-  return !getLockedReason(job.reputationRequired, job.certifications, state) && state.actionPoints > 0 && state.jobId !== job.id
+  return !getLockedReason(job.reputationRequired, job.certifications, state, false, job.programRequirements) && state.actionPoints > 0 && state.jobId !== job.id
 }
 
 export function canRunGig(state: GameState, gig: Gig) {
-  return !getLockedReason(gig.reputationRequired, gig.certifications, state, gig.needsProperty) && state.actionPoints > 0
+  return !getLockedReason(gig.reputationRequired, gig.certifications, state, gig.needsProperty, gig.programRequirements) && state.actionPoints > 0
 }
 
 export function canTakeSideJob(state: GameState, sideJob: SideJob) {
-  if (getLockedReason(sideJob.reputationRequired, sideJob.certifications, state)) return false
+  if (getLockedReason(sideJob.reputationRequired, sideJob.certifications, state, false, sideJob.programRequirements)) return false
   if (sideJob.bankAccountRequired && !state.bankAccount) return false
   if (sideJob.seasonMonths && !sideJob.seasonMonths.includes(((state.month - 1) % 12) + 1)) return false
   if (state.sideJobIds.includes(sideJob.id)) return false

@@ -1,4 +1,5 @@
-import { JOBS } from '../../features/career/data'
+import { CAREER_FIELDS, CAREER_FIELD_MAP, COURSE_MAP, JOBS, SIDE_JOBS } from '../../features/career/data'
+import { EDUCATION_PROGRAMS } from '../../features/education/data'
 import { CONTACT_MAP } from '../../features/world/data'
 import type { GameState } from './types'
 import { canOpenCreditCard, getComplianceRisk, getCreditUtilization, getDebtService, getNetWorth, getPassiveIncomePreview, getWeeklyPassiveIncomePreview, getWeeklyLivingCost, hasStableHousing, toWeeklyAmount, WEEKS_PER_MONTH } from './utils'
@@ -13,6 +14,65 @@ export type RouteOption = {
 
 export function getCurrentJob(state: GameState) {
   return JOBS.find((job) => job.id === state.jobId) ?? JOBS[0]
+}
+
+function getCareerFieldMomentum(state: GameState) {
+  const scores = Object.fromEntries(CAREER_FIELDS.map((field) => [field.id, 0])) as Record<(typeof CAREER_FIELDS)[number]['id'], number>
+  const currentJob = getCurrentJob(state)
+  scores[currentJob.careerField] += 6
+
+  state.sideJobIds.forEach((sideJobId) => {
+    const sideJob = SIDE_JOBS.find((item) => item.id === sideJobId)
+    if (sideJob) scores[sideJob.careerField] += 2
+  })
+
+  state.certifications.forEach((certificationId) => {
+    const course = COURSE_MAP[certificationId]
+    if (course) scores[course.careerField] += 3
+  })
+
+  state.completedEducationPrograms.forEach((programId) => {
+    const program = EDUCATION_PROGRAMS.find((item) => item.id === programId)
+    if (program) scores[program.careerField] += program.educationTier === 'master' ? 7 : program.educationTier === 'bachelor' ? 6 : 4
+  })
+
+  if (state.educationEnrollment) {
+    const program = EDUCATION_PROGRAMS.find((item) => item.id === state.educationEnrollment?.programId)
+    if (program) scores[program.careerField] += 4
+  }
+
+  return scores
+}
+
+function getDominantCareerField(state: GameState) {
+  const scores = getCareerFieldMomentum(state)
+  return CAREER_FIELDS.slice().sort((left, right) => scores[right.id] - scores[left.id])[0]
+}
+
+function getNextFieldJob(state: GameState, fieldId = getDominantCareerField(state).id) {
+  const currentJob = getCurrentJob(state)
+  const jobs = JOBS.filter((job) => job.careerField === fieldId && job.id !== currentJob.id)
+  const preferred = currentJob.careerField === fieldId ? (currentJob.nextJobIds ?? []).map((jobId) => JOBS.find((job) => job.id === jobId)).filter(Boolean) : []
+  return (preferred[0] as (typeof JOBS)[number] | undefined) ?? jobs[0] ?? null
+}
+
+function getFieldGateMessage(state: GameState, job: NonNullable<ReturnType<typeof getNextFieldJob>>) {
+  const missingProgram = job.programRequirements?.find((programId) => !state.completedEducationPrograms.includes(programId))
+  if (missingProgram) {
+    const programTitle = EDUCATION_PROGRAMS.find((program) => program.id === missingProgram)?.title ?? missingProgram
+    return `You are close to the ${CAREER_FIELD_MAP[job.careerField].label.toLowerCase()} ladder, but the next real step wants ${programTitle}.`
+  }
+
+  const missingCertification = job.certifications.find((certificationId) => !state.certifications.includes(certificationId))
+  if (missingCertification) {
+    return `You are close to the ${CAREER_FIELD_MAP[job.careerField].label.toLowerCase()} ladder, but it still wants ${COURSE_MAP[missingCertification]?.title ?? missingCertification}.`
+  }
+
+  if (state.reputation < job.reputationRequired) {
+    return `${CAREER_FIELD_MAP[job.careerField].label} is open, but the next rung still wants more reputation.`
+  }
+
+  return `${job.title} is already close if you want to keep pushing ${CAREER_FIELD_MAP[job.careerField].label.toLowerCase()}.`
 }
 
 export function getWeeklyRunway(state: GameState) {
@@ -48,12 +108,23 @@ export function getMilestones(state: GameState) {
 export function getTips(state: GameState) {
   const tips: string[] = []
   const buffer = state.cash + state.savingsBalance
+  const dominantField = getDominantCareerField(state)
+  const nextFieldJob = getNextFieldJob(state, dominantField.id)
   if (!state.bankAccount && state.cash < 25) tips.push('You are still handling life in cash. Getting banked would make saving and borrowing a lot less awkward.')
   if (!state.bankAccount && state.cash >= 25) tips.push('You can open an account now if you want the next few weeks to feel steadier.')
   if (state.actionPoints > 0 && state.stress >= 62 && state.personalActionsUsedThisWeek.length === 0) tips.push('Stress is climbing. One quiet day would probably do more good than another forced push.')
   if (state.actionPoints > 0 && state.health < 45 && state.cash <= 20) tips.push('A cheap recovery week is still a solid choice when cash is tight and your body is lagging.')
-  if (!state.educationEnrollment && state.bankAccount && state.reputation >= 1 && state.knowledge < 4) tips.push('Study is a real option now. It is slower than hustle, but it opens cleaner work.')
-  if (state.educationEnrollment) tips.push('Your program is doing its job slowly. The cost lands now, the payoff lands later.')
+  if (nextFieldJob) tips.push(getFieldGateMessage(state, nextFieldJob))
+  if (!state.educationEnrollment && state.bankAccount && state.reputation >= 1 && state.knowledge < 4) {
+    const entryProgram =
+      EDUCATION_PROGRAMS.find((program) => program.careerField === dominantField.id && program.educationTier !== 'master') ??
+      EDUCATION_PROGRAMS[0]
+    tips.push(`${entryProgram.title} is a real option now if you want a cleaner route into ${dominantField.label.toLowerCase()}.`)
+  }
+  if (state.educationEnrollment) {
+    const program = EDUCATION_PROGRAMS.find((item) => item.id === state.educationEnrollment?.programId)
+    tips.push(`${program?.title ?? 'Your program'} is expensive and slow, but it is building toward a cleaner long-run lane.`)
+  }
   if (state.sideJobIds.length === 0 && state.week <= 8) tips.push('If you want the week to feel less fragile, steady side work is still the easiest first move.')
   if (state.sideJobIds.length > 0 && state.energy < 35) tips.push('Your current side-work load may be a bit heavier than your energy can really support.')
   if (canOpenCreditCard(state)) tips.push('The bank would approve you for a starter card now. It works best as breathing room, not income.')
@@ -81,6 +152,8 @@ export function getTips(state: GameState) {
 export function getRouteOptions(state: GameState): RouteOption[] {
   const weeklyRunway = getWeeklyRunway(state)
   const buffer = state.cash + state.savingsBalance
+  const dominantField = getDominantCareerField(state)
+  const nextFieldJob = getNextFieldJob(state, dominantField.id)
   const routes: Array<RouteOption & { score: number }> = []
 
   routes.push({
@@ -108,13 +181,17 @@ export function getRouteOptions(state: GameState): RouteOption[] {
     id: 'income',
     title: 'Build income',
     reason:
-      state.sideJobIds.length === 0
-        ? 'Your income is still coming from too few places.'
-        : 'A steadier work setup would make the rest of your choices easier.',
+      nextFieldJob
+        ? `${CAREER_FIELD_MAP[nextFieldJob.careerField].label} is the lane you are drifting toward, but ${nextFieldJob.title} still needs one more step.`
+        : state.sideJobIds.length === 0
+          ? 'Your income is still coming from too few places.'
+          : 'A steadier work setup would make the rest of your choices easier.',
     firstMove:
-      state.sideJobIds.length === 0
-        ? 'Add side work or take the best-paying gig you can reach this week.'
-        : 'Push toward a cleaner job lane or trim weak work for stronger pay.',
+      nextFieldJob
+        ? getFieldGateMessage(state, nextFieldJob)
+        : state.sideJobIds.length === 0
+          ? 'Add side work or take the best-paying gig you can reach this week.'
+          : 'Push toward a cleaner job lane or trim weak work for stronger pay.',
     view: 'career',
     score: (weeklyRunway < 25 ? 5 : 0) + (state.sideJobIds.length === 0 ? 4 : 0) + (state.actionPoints > 0 ? 1 : 0),
   })
@@ -124,12 +201,16 @@ export function getRouteOptions(state: GameState): RouteOption[] {
     title: 'Study and qualify',
     reason:
       state.educationEnrollment
-        ? 'You already have study underway, so staying with it can unlock better work later.'
-        : 'Your knowledge and reputation are high enough that study could start paying off soon.',
+        ? 'You already have study underway, so staying with it can unlock a cleaner field later.'
+        : nextFieldJob?.programRequirements?.length
+          ? `${CAREER_FIELD_MAP[nextFieldJob.careerField].label} is starting to degree-gate you.`
+          : `Your knowledge and reputation are high enough that formal study could start paying off in ${dominantField.label.toLowerCase()}.`,
     firstMove:
       state.educationEnrollment
         ? 'Keep your runway steady and let the program finish.'
-        : 'Look at programs that fit your budget and current standing.',
+        : nextFieldJob?.programRequirements?.length
+          ? `Look at ${EDUCATION_PROGRAMS.find((program) => program.id === nextFieldJob.programRequirements?.[0])?.title ?? 'the next required program'} first.`
+          : 'Look at programs that fit your budget and current standing.',
     view: 'education',
     score: (state.bankAccount ? 2 : 0) + (!state.educationEnrollment ? 3 : 1) + (state.knowledge < 6 ? 3 : 0) + (state.reputation >= 1 ? 2 : 0) + (state.stress < 72 ? 1 : 0),
   })

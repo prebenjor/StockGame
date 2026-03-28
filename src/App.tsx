@@ -418,6 +418,7 @@ function App() {
           actionPoints: latestState.actionPoints,
           bankAccount: latestState.bankAccount,
           personalActionsUsedThisWeek: latestState.personalActionsUsedThisWeek.map((id) => PERSONAL_ACTIONS.find((action) => action.id === id)?.title ?? id),
+          completedEducationPrograms: latestState.completedEducationPrograms,
         },
         weekPlan: latestState.plannedWeekSlots.map((slot) =>
           slot

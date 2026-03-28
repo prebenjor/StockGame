@@ -28,6 +28,7 @@ export function hydrateState(fallback: GameState) {
       ageMonths: parsed.ageMonths ?? fallback.ageMonths,
       market: parsed.market?.length === BASE_MARKET.length ? parsed.market : fallback.market,
       certifications: parsed.certifications ?? fallback.certifications,
+      completedEducationPrograms: parsed.completedEducationPrograms ?? fallback.completedEducationPrograms,
       upgrades: parsed.upgrades ?? fallback.upgrades,
       holdings: parsed.holdings ?? fallback.holdings,
       watchlist: parsed.watchlist ?? fallback.watchlist,
